@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Checklist preoperacional · Fin del Mundo</title>
+<title>Checklist preoperacional · Llanos</title>
 <style>
 :root{--bg:#0c1416;--card:#13201f;--line:#28403e;--ink:#eefaf8;--mut:#9bb5b1;--acc:#d4a017}
 *{box-sizing:border-box}body{margin:0;font:16px/1.4 system-ui,Segoe UI,Arial,sans-serif;background:radial-gradient(circle at 50% 0,#1c3b3d,#0a1414 70%) fixed;color:var(--ink)}
@@ -26,12 +26,13 @@ button{font:inherit;font-weight:900;border:0;border-radius:12px;padding:14px;wid
 button:disabled{opacity:.7}#msg{margin-top:8px;color:#f2c94c;font-weight:700;min-height:1.2em}
 @media (max-width:560px){li{grid-template-columns:1fr}.b span{min-width:72px}}
 </style></head><body>
-<header><small>FIN DEL MUNDO</small><h1>Checklist preoperacional</h1></header>
+<header><small>LLANOS</small><h1>Checklist preoperacional</h1></header>
 <main><form id="f" novalidate>
 <div class="card"><div class="hd">
  <label>Sede *<select id="sede" required><option value="">Elige…</option><option>Villavicencio</option><option>Yopal</option></select></label>
  <label>Placa *<input id="placa" required maxlength="8" placeholder="Ej: TRK494" list="plas" autocomplete="off" style="text-transform:uppercase"><datalist id="plas"></datalist></label>
  <label>Conductor *<input id="nom" required maxlength="80" placeholder="Nombre completo" autocomplete="name"></label>
+ <label>Operación *<select id="oper" required><option value="">Elige…</option><option>Salida</option><option>Retorno</option></select></label>
  <label>Kilometraje<input id="km" type="number" min="0" inputmode="numeric" placeholder="Opcional"></label></div>
  <div class="ley"><span>⚠ = ítem crítico</span><span>Si respondes <b>NO</b>, escribe la observación.</span></div></div>
 <div class="card"><ol id="lst"></ol>
@@ -71,7 +72,7 @@ let urlExcel=URL_EXCEL;getDoc(doc(db,'config','excel')).then(d=>{if(d.exists()&&
 $('f').addEventListener('change',e=>{const r=e.target;if(r.type!=='radio')return;const i=r.name.slice(1),o=$('o'+i),li=r.closest('li');o.hidden=r.value!=='NO';li.classList.toggle('no',r.value==='NO');li.classList.toggle('si',r.value==='SI');if(r.value==='NO')o.focus()});
 $('f').onsubmit=async e=>{e.preventDefault();const m=$('msg'),b=$('send'),sede=$('sede').value,pl=$('placa').value.trim().toUpperCase(),nm=$('nom').value.trim();
  document.querySelectorAll('.falta').forEach(x=>x.classList.remove('falta'));const fal=[],res=[],fz=$('falta');
- if(!sede){fal.push('Sede');$('sede').classList.add('falta')}if(!pl){fal.push('Placa');$('placa').classList.add('falta')}if(!nm){fal.push('Nombre del conductor');$('nom').classList.add('falta')}
+ if(!sede){fal.push('Sede');$('sede').classList.add('falta')}if(!pl){fal.push('Placa');$('placa').classList.add('falta')}if(!nm){fal.push('Nombre del conductor');$('nom').classList.add('falta')}const oper=$('oper').value;if(!oper){fal.push('Operación (Salida o Retorno)');$('oper').classList.add('falta')}
  const sinR=[],sinO=[];for(let i=0;i<Q.length;i++){const v=(document.querySelector(`input[name=q${i}]:checked`)||{}).value,o=$('o'+i).value.trim();
   if(!v){sinR.push(i+1);document.querySelector(`[data-q="${i}"]`).classList.add('falta')}else if(v==='NO'&&!o){sinO.push(i+1);document.querySelector(`[data-q="${i}"]`).classList.add('falta')}res.push({v,o})}
  if(sinR.length)fal.push('Preguntas sin responder: '+sinR.join(', '));if(sinO.length)fal.push('Falta la observación de las preguntas en NO: '+sinO.join(', '));
@@ -79,14 +80,14 @@ $('f').onsubmit=async e=>{e.preventDefault();const m=$('msg'),b=$('send'),sede=$
  if(fal.length){fz.hidden=false;fz.innerHTML='<b>⚠ No se puede enviar todavía. Falta completar:</b><ul>'+fal.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>';m.textContent='';(document.querySelector('.falta')||fz).scrollIntoView({behavior:'smooth',block:'center'});return}
  fz.hidden=true;
  const d=new Date(),p=n=>String(n).padStart(2,'0'),no=res.filter(r=>r.v==='NO').length;
- const data={fecha:`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`,sede,placa:pl,conductor:nm,km:$('km').value||'',si:res.length-no,no,
+ const data={fecha:`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`,sede,placa:pl,conductor:nm,operacion:oper,km:$('km').value||'',si:res.length-no,no,
   criticosNo:Q.filter((q,i)=>q[2]&&res[i].v==='NO').map(q=>q[0]+' - '+q[1]).join(' | '),preguntas:Q.map(q=>(q[2]?'⚠ ':'')+q[0]+' - '+q[1]),respuestas:res.map(r=>r.v),observaciones:res.map(r=>r.o),aceptacion:'SI',obsGeneral:$('obsg').value.trim()};
  b.disabled=true;b.textContent='Enviando…';
  try{const respuestas={};res.forEach((r,i)=>respuestas['q'+String(i+1).padStart(2,'0')]={r:r.v,obs:r.o});
-  await addDoc(collection(db,'checklists'),{fecha:data.fecha,creado:serverTimestamp(),sede,placa:pl,conductor:nm,km:data.km,totalSi:data.si,totalNo:no,
+  await addDoc(collection(db,'checklists'),{fecha:data.fecha,creado:serverTimestamp(),sede,placa:pl,conductor:nm,operacion:oper,km:data.km,totalSi:data.si,totalNo:no,
     criticosNo:Q.filter((q,i)=>q[2]&&res[i].v==='NO').map(q=>q[0]+' - '+q[1]),respuestas,obsGeneral:data.obsGeneral,aceptacion:true,origen:'enlace'});
   if(urlExcel)fetch(urlExcel,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(data)}).catch(()=>{});
-  document.querySelector('main').innerHTML=`<div class="card"><h2 style="margin:0">✔ Checklist enviado</h2><p>Placa <b>${esc(pl)}</b> · ${esc(nm)} · ${esc(sede)}<br>${data.fecha} · ${no} ítem${no===1?'':'s'} en NO</p>
+  document.querySelector('main').innerHTML=`<div class="card"><h2 style="margin:0">✔ Checklist enviado</h2><p>Placa <b>${esc(pl)}</b> · ${esc(nm)} · ${esc(sede)} · <b>${esc(oper)}</b><br>${data.fecha} · ${no} ítem${no===1?'':'s'} en NO</p>
    ${data.obsGeneral?`<p><b>Observaciones:</b> ${esc(data.obsGeneral)}</p>`:''}${no?`<ul>${res.map((r,i)=>r.v==='NO'?`<li style="display:list-item;border:0;padding:2px 0;background:none">${esc(Q[i][0]+' - '+Q[i][1])}: <i>${esc(r.o)}</i></li>`:'').join('')}</ul>`:''}<button onclick="location.reload()">Llenar otro checklist</button></div>`}
  catch(x){console.error(x);m.textContent='No se pudo guardar el checklist'+(x&&x.code==='permission-denied'?' (revisa las reglas de Firestore)':x&&x.code==='unavailable'?' (sin conexión)':'')+'. Intenta de nuevo.';b.disabled=false;b.textContent='Enviar'}};
 </script></body></html>
