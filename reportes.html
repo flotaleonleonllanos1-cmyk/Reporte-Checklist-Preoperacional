@@ -26,6 +26,13 @@ dialog{max-width:820px;width:94vw;background:#0f1a19;color:var(--ink);border:1px
 dialog::backdrop{background:rgba(0,0,0,.6)}.dh{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
 .db{padding:12px 16px;max-height:70vh;overflow:auto}.qi{display:grid;grid-template-columns:30px 1fr auto;gap:8px;padding:7px 0;border-bottom:1px dashed var(--line);font-size:.88rem}
 .qi .n{color:var(--mut);font-weight:800}.qi .o{grid-column:2/-1;color:#ffd2d2;font-size:.84rem}.cat{color:var(--acc);font-weight:900;font-size:.72rem}
+.mail .mh{display:grid;gap:2px;margin-bottom:8px}.mail .mh small{color:var(--mut)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.chips span{display:inline-flex;align-items:center;gap:6px;padding:4px 6px 4px 10px;border-radius:999px;background:rgba(19,224,196,.12);border:1px solid rgba(19,224,196,.4);font-size:.84rem}
+.chips button{border:0;background:rgba(240,112,112,.25);color:#fff;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:.7rem;line-height:1}
+.msgc{color:#f2c94c;font-weight:700;margin-top:6px;min-height:1em}.btn:disabled{opacity:.5;cursor:not-allowed}
+.alerta{margin-top:12px;border:1px solid var(--bad);background:rgba(240,112,112,.13);color:#ffd2d2;border-radius:12px;padding:10px 14px;font-size:.9rem}
+.mh{display:grid;gap:2px;margin-bottom:6px}.mh small{color:var(--mut)}table.sr{min-width:700px}tr.mal td{background:rgba(240,112,112,.07)}
+.bar{display:inline-block;width:70px;height:8px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden;vertical-align:middle;margin-right:8px}.bar i{display:block;height:100%}
 .empty{color:var(--mut);text-align:center;padding:24px}.live{font-size:.78rem;color:#13e0c4}.live::before{content:"● ";animation:pl 1.6s infinite}@keyframes pl{50%{opacity:.3}}
 </style></head><body>
 <header><div><small>LLANOS</small><h1>Reportes · Checklist preoperacional</h1></div><div id="usr"></div></header>
@@ -33,7 +40,7 @@ dialog::backdrop{background:rgba(0,0,0,.6)}.dh{padding:14px 16px;border-bottom:1
 <dialog id="det"></dialog>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-import { getFirestore, collection, query, orderBy, limit, onSnapshot } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+import { getFirestore, collection, query, orderBy, limit, onSnapshot, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 const firebaseConfig={apiKey:"AIzaSyDYsewqqh0a0m46vRRN_bP3F6NBYGldyTE",authDomain:"checklist-583f9.firebaseapp.com",projectId:"checklist-583f9",storageBucket:"checklist-583f9.firebasestorage.app",messagingSenderId:"906852823631",appId:"1:906852823631:web:0727d6d9405f2d5be3703a",measurementId:"G-CCPMV617JB"};
 const fa=initializeApp(firebaseConfig),db=getFirestore(fa),auth=getAuth(fa);
@@ -51,7 +58,7 @@ const Q=[['DOC','¿Cuenta con documentación vigente, física o digital?',1],['S
  ['ETI','¿Cuenta con todas las etiquetas de seguridad y señalización completas y visibles?',0],['CARRET','¿Carretillas o diablos se encuentran completos?',0],['CARRET','¿Carretillas o diablos se encuentran funcionales?',0]];
 const $=id=>document.getElementById(id),esc=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const MES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-let D=[],vistos=null,F={sede:'',oper:'',mes:'',estado:'',q:''},unsub=null;
+let D=[],vistos=null,F={sede:'',oper:'',mes:'',estado:'',q:''},unsub=null,correos=[],urlExcel='',msgC='',Vact=[];
 const fd=f=>{const[a,b]=String(f||'').split(' ');if(!a)return'—';const[y,m,d]=a.split('-');return `${d}/${m}/${y} ${(b||'').slice(0,5)}`};
 function login(msg=''){$('usr').innerHTML='';$('app').innerHTML=`<div class="card login"><h2 style="margin:0">Ingresar</h2><p style="color:var(--mut);margin:6px 0 0">Para revisar los reportes del checklist.</p>
   <form id="lf"><label>Correo<input id="em" type="email" required autocomplete="username"></label><label>Contraseña<input id="pw" type="password" required autocomplete="current-password"></label>
@@ -63,10 +70,15 @@ onAuthStateChanged(auth,u=>{if(unsub){unsub();unsub=null}if(!u){login();return}
   unsub=onSnapshot(query(collection(db,'checklists'),orderBy('creado','desc'),limit(2000)),snap=>{const nuevos=vistos?snap.docs.filter(d=>!vistos.has(d.id)).map(d=>d.id):[];
     vistos=new Set(snap.docs.map(d=>d.id));D=snap.docs.map(d=>({id:d.id,...d.data({serverTimestamps:'estimate'})}));pintar(nuevos)},
     x=>{$('app').innerHTML=`<p class="empty">No se pudieron leer los reportes (${esc(x.code)}). Revisa las reglas de Firestore.</p>`})});
+// Salida y retorno: cada placa que hace Salida en un día debe hacer también Retorno ese día (100 %); si falta una, queda en 50 %
+function pares(L){const m={};L.filter(x=>x.operacion).forEach(x=>{const dia=String(x.fecha||'').slice(0,10),k=dia+'|'+x.sede+'|'+x.placa;const e=m[k]=m[k]||{dia,sede:x.sede,placa:x.placa,sal:0,ret:0,cond:new Set()};
+  if(x.operacion==='Salida')e.sal++;else if(x.operacion==='Retorno')e.ret++;e.cond.add(x.conductor)});
+  return Object.values(m).map(e=>({...e,pct:e.sal&&e.ret?100:50,falta:e.sal&&!e.ret?'Retorno':!e.sal&&e.ret?'Salida':''})).sort((a,b)=>b.dia.localeCompare(a.dia)||a.placa.localeCompare(b.placa))}
 function pintar(nuevos=[]){
   const meses=[...new Set(D.map(x=>String(x.fecha||'').slice(0,7)).filter(Boolean))].sort().reverse();
   const q=F.q.trim().toLowerCase(),V=D.filter(x=>(!F.sede||x.sede===F.sede)&&(!F.oper||x.operacion===F.oper)&&(!F.mes||String(x.fecha||'').startsWith(F.mes))
     &&(!F.estado||(F.estado==='no'?x.totalNo>0:F.estado==='cr'?(x.criticosNo||[]).length>0:x.totalNo===0))&&(!q||`${x.placa} ${x.conductor}`.toLowerCase().includes(q)));
+  const base=D.filter(x=>(!F.sede||x.sede===F.sede)&&(!F.mes||String(x.fecha||'').startsWith(F.mes))&&(!q||`${x.placa} ${x.conductor}`.toLowerCase().includes(q))),P=pares(base),inc=P.filter(e=>e.pct<100);
   const conNo=V.filter(x=>x.totalNo>0).length,cr=V.filter(x=>(x.criticosNo||[]).length).length,hoy=new Date().toISOString().slice(0,10);
   $('app').innerHTML=`<div class="card"><div class="fil">
     <label>Sede<select id="fs"><option value="">Todas</option>${['Villavicencio','Yopal'].map(s=>`<option${s===F.sede?' selected':''}>${s}</option>`).join('')}</select></label>
@@ -74,16 +86,21 @@ function pintar(nuevos=[]){
     <label>Mes<select id="fm"><option value="">Todos</option>${meses.map(k=>`<option value="${k}"${k===F.mes?' selected':''}>${MES[+k.slice(5)-1]} ${k.slice(0,4)}</option>`).join('')}</select></label>
     <label>Estado<select id="fe"><option value="">Todos</option><option value="ok"${F.estado==='ok'?' selected':''}>Sin NO</option><option value="no"${F.estado==='no'?' selected':''}>Con NO</option><option value="cr"${F.estado==='cr'?' selected':''}>Con críticos en NO</option></select></label>
     <input id="fq" type="search" placeholder="Buscar placa o conductor…" value="${esc(F.q)}" style="flex:1;min-width:180px">
-    <button class="btn" id="xls">⬇ Excel</button></div></div>
+    <button class="btn" id="xls" title="Descarga un Excel por cada mes">⬇ Excel por mes</button></div></div>
    <div class="kpis"><div class="kpi"><b>${V.length}</b><span>Checklists</span></div><div class="kpi"><b>${V.filter(x=>String(x.fecha).startsWith(hoy)).length}</b><span>Enviados hoy</span></div>
     <div class="kpi ok"><b>${V.length-conNo}</b><span>Sin ningún NO</span></div><div class="kpi bad"><b>${conNo}</b><span>Con algún NO</span></div><div class="kpi bad"><b>${cr}</b><span>Con ítems críticos en NO</span></div></div>
+   ${inc.length?`<div class="alerta" role="alert">⚠ <b>${inc.length} placa${inc.length===1?'':'s'}</b> no ${inc.length===1?'realizó':'realizaron'} las dos operaciones (Salida y Retorno): ${inc.slice(0,8).map(e=>`<b>${esc(e.placa)}</b> (${fd(e.dia).slice(0,10)}, falta ${e.falta})`).join(' · ')}${inc.length>8?' …':''}</div>`:''}
+   <div class="card"><div class="mh"><b>Salida y retorno por placa</b><small>Cada placa debe hacer Salida y Retorno el mismo día · ${P.length?Math.round(P.filter(e=>e.pct===100).length/P.length*100):0}% de cumplimiento</small></div>
+     <div class="tw" style="max-height:320px"><table class="sr"><thead><tr><th>Día</th><th>Sede</th><th>Placa</th><th>Conductor(es)</th><th>Salida</th><th>Retorno</th><th>Cumplimiento</th></tr></thead><tbody>
+     ${P.map(e=>`<tr class="${e.pct<100?'mal':''}"><td>${fd(e.dia).slice(0,10)}</td><td>${esc(e.sede)}</td><td><b>${esc(e.placa)}</b></td><td>${esc([...e.cond].join(', '))}</td><td>${e.sal?'✔':'✘'}</td><td>${e.ret?'✔':'✘'}</td>
+       <td><div class="bar"><i style="width:${e.pct}%;background:${e.pct===100?'var(--ok)':'var(--bad)'}"></i></div><b style="color:${e.pct===100?'var(--ok)':'var(--bad)'}">${e.pct}%${e.falta?' · falta '+e.falta:''}</b></td></tr>`).join('')||'<tr><td colspan="7" class="empty">Sin checklists con operación.</td></tr>'}</tbody></table></div></div>
    <div class="card"><div class="tw"><table><thead><tr><th>Fecha</th><th>Sede</th><th>Operación</th><th>Placa</th><th>Conductor</th><th>Km</th><th>Resultado</th><th>Críticos</th></tr></thead><tbody>
    ${V.map(x=>`<tr class="r${nuevos.includes(x.id)?' nuevo':''}" data-id="${x.id}"><td>${fd(x.fecha)}</td><td>${esc(x.sede)}</td><td>${x.operacion?`<span class="pill ${x.operacion==='Salida'?'p-s':'p-r'}">${esc(x.operacion)}</span>`:'—'}</td><td><b>${esc(x.placa)}</b></td><td>${esc(x.conductor)}</td><td>${esc(x.km||'—')}</td>
      <td>${x.totalNo?`<span class="pill p-no">${x.totalNo} NO</span>`:'<span class="pill p-ok">Todo SI</span>'}</td><td>${(x.criticosNo||[]).length?`<span class="pill p-cr">⚠ ${(x.criticosNo||[]).length}</span>`:''}</td></tr>`).join('')||'<tr><td colspan="8" class="empty">No hay reportes con estos filtros.</td></tr>'}</tbody></table></div></div>`;
   $('fs').onchange=e=>{F.sede=e.target.value;pintar()};$('fo').onchange=e=>{F.oper=e.target.value;pintar()};$('fm').onchange=e=>{F.mes=e.target.value;pintar()};$('fe').onchange=e=>{F.estado=e.target.value;pintar()};
   $('fq').oninput=e=>{F.q=e.target.value;clearTimeout(window.__t);window.__t=setTimeout(()=>{pintar();const i=$('fq');i.focus();i.setSelectionRange(i.value.length,i.value.length)},300)};
   document.querySelectorAll('tr.r').forEach(tr=>tr.onclick=()=>detalle(D.find(x=>x.id===tr.dataset.id)));
-  $('xls').onclick=()=>excel(V);
+  $('xls').onclick=()=>excel(V);Vact=V;
 }
 function detalle(x){if(!x)return;const R=x.respuestas||{},d=$('det');
   d.innerHTML=`<div class="dh"><div><b style="font-size:1.15rem">${esc(x.placa)}</b> · ${esc(x.conductor)}<br><small style="color:var(--mut)">${fd(x.fecha)} · ${esc(x.sede)} · ${esc(x.operacion||'—')} · Km ${esc(x.km||'—')}</small></div><button class="btn g" id="dc">✕ Cerrar</button></div>
@@ -91,8 +108,18 @@ function detalle(x){if(!x)return;const R=x.respuestas||{},d=$('det');
    ${Q.map(([c,q,cr],i)=>{const r=R['q'+String(i+1).padStart(2,'0')]||{};return `<div class="qi"><span class="n">${i+1}.</span><span><span class="cat">${cr?'⚠ ':''}${c}</span> ${esc(q)}</span><span class="pill ${r.r==='NO'?'p-no':'p-ok'}">${esc(r.r||'—')}</span>${r.r==='NO'?`<span class="o">Observación: ${esc(r.obs||'')}</span>`:''}</div>`}).join('')}
    ${x.obsGeneral?`<p style="margin-top:12px"><b>Observaciones:</b> ${esc(x.obsGeneral)}</p>`:''}</div>`;
   d.showModal();$('dc').onclick=()=>d.close()}
-async function excel(V){if(!window.XLSX){await new Promise((ok,er)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=ok;s.onerror=er;document.head.appendChild(s)})}
-  const enc=['Fecha','Sede','Operación','Placa','Conductor','Kilometraje','Total SI','Total NO','Críticos en NO'];Q.forEach(([c,q],i)=>{enc.push(`${i+1}. ${c} - ${q}`);enc.push(`Obs. ${i+1}`)});enc.push('Observaciones generales');
-  const rows=[enc,...V.map(x=>{const R=x.respuestas||{},f=[x.fecha,x.sede,x.operacion||'',x.placa,x.conductor,x.km||'',x.totalSi,x.totalNo,(x.criticosNo||[]).join(' | ')];Q.forEach((q,i)=>{const r=R['q'+String(i+1).padStart(2,'0')]||{};f.push(r.r||'');f.push(r.obs||'')});f.push(x.obsGeneral||'');return f})];
-  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Checklist');XLSX.writeFile(wb,`checklist_preoperacional_${new Date().toISOString().slice(0,10)}.xlsx`)}
+async function libroXLSX(V){if(!window.XLSX){await new Promise((ok,er)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=ok;s.onerror=er;document.head.appendChild(s)})}
+  const PP={};pares(D).forEach(e=>PP[e.dia+'|'+e.sede+'|'+e.placa]=e);
+  const enc=['Fecha','Sede','Operación','Placa','Conductor','Kilometraje','Total SI','Total NO','Críticos en NO','Salida y retorno (día)'];Q.forEach(([c,q],i)=>{enc.push(`${i+1}. ${c} - ${q}`);enc.push(`Obs. ${i+1}`)});enc.push('Observaciones generales');
+  const rows=[enc,...V.map(x=>{const R=x.respuestas||{},e=PP[String(x.fecha||'').slice(0,10)+'|'+x.sede+'|'+x.placa],f=[x.fecha,x.sede,x.operacion||'',x.placa,x.conductor,x.km||'',x.totalSi,x.totalNo,(x.criticosNo||[]).join(' | '),e?(e.pct===100?'100% completo':'50% · falta '+e.falta):''];Q.forEach((q,i)=>{const r=R['q'+String(i+1).padStart(2,'0')]||{};f.push(r.r||'');f.push(r.obs||'')});f.push(x.obsGeneral||'');return f})];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Checklist');return wb}
+const nombreX=()=>`checklist_preoperacional_${new Date().toISOString().slice(0,10)}.xlsx`;
+async function excel(V){if(!V.length)return alert('No hay reportes para descargar con estos filtros.');
+  const meses=[...new Set(V.map(x=>String(x.fecha||'').slice(0,7)).filter(Boolean))].sort();
+  for(const mm of meses){const Vm=V.filter(x=>String(x.fecha||'').startsWith(mm)),wb=await libroXLSX(Vm),Pm=pares(D.filter(x=>String(x.fecha||'').startsWith(mm)&&(!F.sede||x.sede===F.sede)));
+    const sr=[['Día','Sede','Placa','Conductor(es)','Salida','Retorno','Cumplimiento %','Estado'],...Pm.map(e=>[e.dia,e.sede,e.placa,[...e.cond].join(', '),e.sal?'SI':'NO',e.ret?'SI':'NO',e.pct,e.pct===100?'Completo':'ALERTA: falta '+e.falta])];
+    const ws=XLSX.utils.aoa_to_sheet(sr);ws['!cols']=[{wch:12},{wch:14},{wch:10},{wch:28},{wch:8},{wch:8},{wch:14},{wch:24}];XLSX.utils.book_append_sheet(wb,ws,'Salida y retorno');
+    const al=Pm.filter(e=>e.pct<100);XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['ALERTAS · Placas sin Salida y Retorno el mismo día'],['Día','Sede','Placa','Falta'],...al.map(e=>[e.dia,e.sede,e.placa,e.falta])]),'Alertas');
+    XLSX.writeFile(wb,`checklist_preoperacional_${mm}${F.sede?'_'+F.sede:''}.xlsx`);await new Promise(r=>setTimeout(r,500))}}
+
 </script></body></html>
