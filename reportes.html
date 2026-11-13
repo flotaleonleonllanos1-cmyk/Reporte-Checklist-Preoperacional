@@ -30,6 +30,7 @@ dialog::backdrop{background:rgba(0,0,0,.6)}.dh{padding:14px 16px;border-bottom:1
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.chips span{display:inline-flex;align-items:center;gap:6px;padding:4px 6px 4px 10px;border-radius:999px;background:rgba(19,224,196,.12);border:1px solid rgba(19,224,196,.4);font-size:.84rem}
 .chips button{border:0;background:rgba(240,112,112,.25);color:#fff;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:.7rem;line-height:1}
 .msgc{color:#f2c94c;font-weight:700;margin-top:6px;min-height:1em}.btn:disabled{opacity:.5;cursor:not-allowed}
+.opb{display:inline-flex;gap:4px;align-items:center;border:0;border-radius:999px;padding:2px 8px;font:inherit;font-size:.68rem;cursor:pointer;margin:1px 0}.opb.p-s{background:rgba(94,200,242,.18);color:#7fd3f5}.opb.p-r{background:rgba(155,225,93,.18);color:#b8ec84}.opb.p-ok{background:rgba(30,217,176,.18);color:var(--ok)}.opb.vac{background:rgba(240,112,112,.12);color:var(--bad);cursor:default}.opb:not(.vac):hover{filter:brightness(1.25)}
 .mini th,.mini td{padding:4px 6px!important;font-size:.72rem!important}.mini .pill{font-size:.65rem;padding:1px 7px}.mini .bar{width:44px;height:6px}table.mini{min-width:760px}
 .alerta{margin-top:12px;border:1px solid var(--bad);background:rgba(240,112,112,.13);color:#ffd2d2;border-radius:12px;padding:10px 14px;font-size:.9rem}
 .mh{display:grid;gap:2px;margin-bottom:6px}.mh small{color:var(--mut)}table.sr{min-width:700px}tr.mal td{background:rgba(240,112,112,.07)}
@@ -80,6 +81,11 @@ function pintar(nuevos=[]){
   const q=F.q.trim().toLowerCase(),V=D.filter(x=>(!F.sede||x.sede===F.sede)&&(!F.oper||x.operacion===F.oper)&&(!F.mes||String(x.fecha||'').startsWith(F.mes))
     &&(!F.estado||(F.estado==='no'?x.totalNo>0:F.estado==='cr'?(x.criticosNo||[]).length>0:x.totalNo===0))&&(!q||`${x.placa} ${x.conductor}`.toLowerCase().includes(q)));
   const base=D.filter(x=>(!F.sede||x.sede===F.sede)&&(!F.mes||String(x.fecha||'').startsWith(F.mes))&&(!q||`${x.placa} ${x.conductor}`.toLowerCase().includes(q))),P=pares(base),PM={};P.forEach(e=>PM[e.dia+'|'+e.sede+'|'+e.placa]=e);
+  const GM={},G=[];V.forEach(x=>{const dia=String(x.fecha||'').slice(0,10);if(!x.operacion){G.push({dia,sede:x.sede,placa:x.placa,sinOp:x,ord:x.fecha});return}
+    const k=dia+'|'+x.sede+'|'+x.placa;let g=GM[k];if(!g){g=GM[k]={dia,sede:x.sede,placa:x.placa,sal:null,ret:null,ord:''};G.push(g)}
+    if(x.operacion==='Salida'){if(!g.sal||x.fecha>g.sal.fecha)g.sal=x}else if(x.operacion==='Retorno'){if(!g.ret||x.fecha>g.ret.fecha)g.ret=x}if(x.fecha>g.ord)g.ord=x.fecha});
+  G.forEach(g=>{if(g.sinOp)return;const e=PM[g.dia+'|'+g.sede+'|'+g.placa]||{pct:g.sal&&g.ret?100:50,falta:g.sal&&!g.ret?'Retorno':!g.sal?'Salida':''};g.pct=e.pct;g.falta=e.falta});
+  G.sort((a,b)=>String(b.ord).localeCompare(String(a.ord)));
   const conNo=V.filter(x=>x.totalNo>0).length,cr=V.filter(x=>(x.criticosNo||[]).length).length,hoy=new Date().toISOString().slice(0,10);
   $('app').innerHTML=`<div class="card"><div class="fil">
     <label>Sede<select id="fs"><option value="">Todas</option>${['Villavicencio','Yopal'].map(s=>`<option${s===F.sede?' selected':''}>${s}</option>`).join('')}</select></label>
@@ -91,12 +97,18 @@ function pintar(nuevos=[]){
    <div class="kpis"><div class="kpi"><b>${V.length}</b><span>Checklists</span></div><div class="kpi"><b>${V.filter(x=>String(x.fecha).startsWith(hoy)).length}</b><span>Enviados hoy</span></div>
     <div class="kpi ok"><b>${V.length-conNo}</b><span>Sin ningún NO</span></div><div class="kpi bad"><b>${conNo}</b><span>Con algún NO</span></div><div class="kpi bad"><b>${cr}</b><span>Con ítems críticos en NO</span></div></div>
    <div class="card"><div class="mh"><b>Reportes</b><small>Cumplimiento salida y retorno: <b style="color:${P.length&&P.every(e=>e.pct===100)?'var(--ok)':'var(--bad)'}">${P.length?Math.round(P.filter(e=>e.pct===100).length/P.length*100):0}%</b> · cada placa debe hacer Salida y Retorno el mismo día</small></div>
-   <div class="tw"><table class="mini"><thead><tr><th>Fecha</th><th>Sede</th><th>Operación</th><th>Placa</th><th>Conductor</th><th>Km</th><th>Resultado</th><th>Críticos</th><th>Cumplimiento salida y retorno</th></tr></thead><tbody>
-   ${V.map(x=>`<tr class="r${nuevos.includes(x.id)?' nuevo':''}" data-id="${x.id}"><td>${fd(x.fecha)}</td><td>${esc(x.sede)}</td><td>${x.operacion?`<span class="pill ${x.operacion==='Salida'?'p-s':'p-r'}">${esc(x.operacion)}</span>`:'—'}</td><td><b>${esc(x.placa)}</b></td><td>${esc(x.conductor)}</td><td>${esc(x.km||'—')}</td>
-     <td>${x.totalNo?`<span class="pill p-no">${x.totalNo} NO</span>`:'<span class="pill p-ok">Todo SI</span>'}</td><td>${(x.criticosNo||[]).length?`<span class="pill p-cr">⚠ ${(x.criticosNo||[]).length}</span>`:''}</td><td>${(()=>{const e=PM[String(x.fecha||'').slice(0,10)+'|'+x.sede+'|'+x.placa];if(!e)return '<span style="color:var(--mut)">—</span>';const c=e.pct===100?'var(--ok)':'var(--bad)';return `<div class="bar"><i style="width:${e.pct}%;background:${c}"></i></div><b style="color:${c}">${e.pct}%${e.falta?' · falta '+e.falta:''}</b>`})()}</td></tr>`).join('')||'<tr><td colspan="9" class="empty">No hay reportes con estos filtros.</td></tr>'}</tbody></table></div></div>`;
+   <div class="tw"><table class="mini"><thead><tr><th>Fecha</th><th>Sede</th><th>Placa</th><th>Operación</th><th>Conductor(es)</th><th>Km</th><th>Resultado</th><th>Críticos</th><th>Cumplimiento salida y retorno</th></tr></thead><tbody>
+   ${G.map(g=>{const S=g.sal,Rt=g.ret,op=(x,l,cl)=>x?`<button class="opb ${cl}" data-id="${x.id}" title="Ver checklist de ${l}"><b>${l}</b> ${fd(x.fecha).slice(11)}</button>`:`<span class="opb vac">${l} —</span>`;
+     const L=[S,Rt].filter(Boolean),no=L.reduce((a,x)=>a+(x.totalNo||0),0),cr=L.reduce((a,x)=>a+((x.criticosNo||[]).length),0),c=g.pct===100?'var(--ok)':'var(--bad)';
+     return `<tr class="${L.some(x=>nuevos.includes(x.id))?'nuevo':''}"><td>${fd(g.dia).slice(0,10)}</td><td>${esc(g.sede)}</td><td><b>${esc(g.placa)}</b></td>
+      <td>${g.sinOp?op(g.sinOp,'Checklist','p-ok'):op(S,'Salida','p-s')+' '+op(Rt,'Retorno','p-r')}</td><td>${esc([...new Set(L.concat(g.sinOp?[g.sinOp]:[]).map(x=>x.conductor))].join(' / '))}</td>
+      <td>${S||Rt?`${esc(S?S.km||'—':'—')} → ${esc(Rt?Rt.km||'—':'—')}`:esc(g.sinOp.km||'—')}</td>
+      <td>${g.sinOp?(g.sinOp.totalNo?`<span class="pill p-no">${g.sinOp.totalNo} NO</span>`:'<span class="pill p-ok">Todo SI</span>'):no?`<span class="pill p-no">${no} NO</span>`:'<span class="pill p-ok">Todo SI</span>'}</td>
+      <td>${(g.sinOp?(g.sinOp.criticosNo||[]).length:cr)?`<span class="pill p-cr">⚠ ${g.sinOp?(g.sinOp.criticosNo||[]).length:cr}</span>`:''}</td>
+      <td>${g.sinOp?'<span style="color:var(--mut)">—</span>':`<div class="bar"><i style="width:${g.pct}%;background:${c}"></i></div><b style="color:${c}">${g.pct}%${g.falta?' · falta '+g.falta:''}</b>`}</td></tr>`}).join('')||'<tr><td colspan="9" class="empty">No hay reportes con estos filtros.</td></tr>'}</tbody></table></div></div>`;
   $('fs').onchange=e=>{F.sede=e.target.value;pintar()};$('fo').onchange=e=>{F.oper=e.target.value;pintar()};$('fm').onchange=e=>{F.mes=e.target.value;pintar()};$('fe').onchange=e=>{F.estado=e.target.value;pintar()};
   $('fq').oninput=e=>{F.q=e.target.value;clearTimeout(window.__t);window.__t=setTimeout(()=>{pintar();const i=$('fq');i.focus();i.setSelectionRange(i.value.length,i.value.length)},300)};
-  document.querySelectorAll('tr.r').forEach(tr=>tr.onclick=()=>detalle(D.find(x=>x.id===tr.dataset.id)));
+  document.querySelectorAll('.opb[data-id]').forEach(b=>b.onclick=()=>detalle(D.find(x=>x.id===b.dataset.id)));
   $('xls').onclick=()=>excel(V);Vact=V;
 }
 function detalle(x){if(!x)return;const R=x.respuestas||{},d=$('det');
