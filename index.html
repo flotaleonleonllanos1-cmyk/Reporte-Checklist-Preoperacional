@@ -18,6 +18,7 @@ li.cr{border-left:4px solid var(--acc)}li.no{border-color:#e05252;background:rgb
 .b span{display:inline-block;min-width:58px;text-align:center;padding:9px 10px;border-radius:10px;border:1px solid var(--line);font-weight:900}
 .si input:checked+span{background:linear-gradient(180deg,#1ed9b0,#0e9c86);color:#062c28;border-color:#0e9c86}.no input:checked+span{background:linear-gradient(180deg,#f07070,#c0392b);color:#fff;border-color:#c0392b}
 textarea.obs{grid-column:1/-1;min-height:66px}
+input,textarea,select{font-size:15px;font-family:inherit}#nom,#placa,#km,textarea{text-transform:uppercase}
 .timer{display:grid;align-content:center;gap:2px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:#0b1514}.timer span{font-size:.75rem;font-weight:800;color:var(--mut)}
 .timer b{font-size:1.4rem;font-variant-numeric:tabular-nums;color:var(--mut)}.timer.on b{color:#f2c94c}.timer small{font-size:.7rem;color:var(--mut)}
 .obsg{margin-top:12px}.obsg textarea{min-height:90px}
@@ -81,10 +82,10 @@ let t0=null,tFin=null,tInt=null;const fmtT=s=>`${Math.floor(s/60)}:${String(s%60
 const arrancar=()=>{if(t0)return;t0=Date.now();$('cronoest').textContent='En curso…';$('crono').parentElement.classList.add('on');tInt=setInterval(()=>{$('crono').textContent=fmtT(Math.round((Date.now()-t0)/1000))},1000)};
 $('f').addEventListener('input',arrancar,true);$('f').addEventListener('change',arrancar,true);
 $('f').addEventListener('change',e=>{const r=e.target;if(r.type!=='radio')return;const i=r.name.slice(1),o=$('o'+i),li=r.closest('li');o.hidden=r.value!=='NO';li.classList.toggle('no',r.value==='NO');li.classList.toggle('si',r.value==='SI');if(r.value==='NO')o.focus()});
-$('f').onsubmit=async e=>{e.preventDefault();const m=$('msg'),b=$('send'),sede=$('sede').value,pl=$('placa').value.trim().toUpperCase(),nm=$('nom').value.trim();
+$('f').onsubmit=async e=>{e.preventDefault();const m=$('msg'),b=$('send'),sede=$('sede').value,pl=$('placa').value.trim().toUpperCase(),nm=$('nom').value.trim().replace(/\s+/g,' ').toUpperCase();
  document.querySelectorAll('.falta').forEach(x=>x.classList.remove('falta'));const fal=[],res=[],fz=$('falta');
  if(!sede){fal.push('Sede');$('sede').classList.add('falta')}if(!pl){fal.push('Placa');$('placa').classList.add('falta')}if(!nm){fal.push('Nombre del conductor');$('nom').classList.add('falta')}const oper=$('oper').value;if(!oper){fal.push('Operación (Salida o Retorno)');$('oper').classList.add('falta')}
- const sinR=[],sinO=[];for(let i=0;i<Q.length;i++){const v=(document.querySelector(`input[name=q${i}]:checked`)||{}).value,o=$('o'+i).value.trim();
+ const sinR=[],sinO=[];for(let i=0;i<Q.length;i++){const v=(document.querySelector(`input[name=q${i}]:checked`)||{}).value,o=$('o'+i).value.trim().replace(/\s+/g,' ').toUpperCase();
   if(!v){sinR.push(i+1);document.querySelector(`[data-q="${i}"]`).classList.add('falta')}else if(v==='NO'&&!o){sinO.push(i+1);document.querySelector(`[data-q="${i}"]`).classList.add('falta')}res.push({v,o})}
  if(sinR.length)fal.push('Preguntas sin responder: '+sinR.join(', '));if(sinO.length)fal.push('Falta la observación de las preguntas en NO: '+sinO.join(', '));
  if(!$('acep').checked){fal.push('Aceptación y declaración de veracidad');$('acep').closest('.acep').classList.add('falta')}
@@ -92,7 +93,7 @@ $('f').onsubmit=async e=>{e.preventDefault();const m=$('msg'),b=$('send'),sede=$
  fz.hidden=true;
  const d=new Date(),p=n=>String(n).padStart(2,'0'),no=res.filter(r=>r.v==='NO').length;
  const data={fecha:`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`,sede,placa:pl,conductor:nm,operacion:oper,km:$('km').value||'',si:res.length-no,no,
-  criticosNo:Q.filter((q,i)=>q[2]&&res[i].v==='NO').map(q=>q[0]+' - '+q[1]).join(' | '),preguntas:Q.map(q=>(q[2]?'⚠ ':'')+q[0]+' - '+q[1]),respuestas:res.map(r=>r.v),observaciones:res.map(r=>r.o),aceptacion:'SI',obsGeneral:$('obsg').value.trim()};
+  criticosNo:Q.filter((q,i)=>q[2]&&res[i].v==='NO').map(q=>q[0]+' - '+q[1]).join(' | '),preguntas:Q.map(q=>(q[2]?'⚠ ':'')+q[0]+' - '+q[1]),respuestas:res.map(r=>r.v),observaciones:res.map(r=>r.o),aceptacion:'SI',obsGeneral:$('obsg').value.trim().replace(/\s+/g,' ').toUpperCase()};
  b.disabled=true;b.textContent='Enviando…';
  try{const respuestas={};res.forEach((r,i)=>respuestas['q'+String(i+1).padStart(2,'0')]={r:r.v,obs:r.o});
   tFin=Date.now();const dur=t0?Math.round((tFin-t0)/1000):0;data.duracion=fmtT(dur);

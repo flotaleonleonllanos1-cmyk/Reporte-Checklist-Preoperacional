@@ -30,7 +30,13 @@ dialog::backdrop{background:rgba(0,0,0,.6)}.dh{padding:14px 16px;border-bottom:1
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.chips span{display:inline-flex;align-items:center;gap:6px;padding:4px 6px 4px 10px;border-radius:999px;background:rgba(19,224,196,.12);border:1px solid rgba(19,224,196,.4);font-size:.84rem}
 .chips button{border:0;background:rgba(240,112,112,.25);color:#fff;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:.7rem;line-height:1}
 .msgc{color:#f2c94c;font-weight:700;margin-top:6px;min-height:1em}.btn:disabled{opacity:.5;cursor:not-allowed}
-.opc{display:inline-grid;justify-items:center;gap:1px;vertical-align:top;margin-right:4px}.durb{font-size:.62rem;font-weight:800;border-radius:999px;padding:0 7px}.durb.p-s{background:rgba(94,200,242,.12);color:#7fd3f5}.durb.p-r{background:rgba(155,225,93,.12);color:#b8ec84}.durb.p-ok{background:rgba(30,217,176,.12);color:var(--ok)}
+.tprom{color:#f2c94c;font-variant-numeric:tabular-nums}
+.mh.plh{display:flex;justify-content:space-between;align-items:center;gap:10px}.mh.plh>div{display:grid;gap:2px}.mh.plh .btn{white-space:nowrap;flex:none}.plbody[hidden]{display:none}
+.tw.fijo{height:380px;overflow-y:auto;overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+.tw.fijo thead th{position:sticky;top:0;z-index:1;background:var(--card)}
+table.mini td{white-space:nowrap}table.nog td:nth-child(6),table.nog td:nth-child(7){white-space:normal}
+.tx{font-size:.72rem!important;font-weight:600;letter-spacing:.01em;text-transform:uppercase}
+.opc{display:inline-flex;align-items:center;gap:3px;vertical-align:middle;margin-right:4px}.durb{font-size:.62rem;font-weight:800;border-radius:999px;padding:0 7px}.durb.p-s{background:rgba(94,200,242,.12);color:#7fd3f5}.durb.p-r{background:rgba(155,225,93,.12);color:#b8ec84}.durb.p-ok{background:rgba(30,217,176,.12);color:var(--ok)}
 .nol{margin:0;padding-left:14px}.nol li{margin:1px 0}.nog td{vertical-align:top}
 .opb{display:inline-flex;gap:4px;align-items:center;border:0;border-radius:999px;padding:2px 8px;font:inherit;font-size:.68rem;cursor:pointer;margin:1px 0}.opb.p-s{background:rgba(94,200,242,.18);color:#7fd3f5}.opb.p-r{background:rgba(155,225,93,.18);color:#b8ec84}.opb.p-ok{background:rgba(30,217,176,.18);color:var(--ok)}.opb.vac{background:rgba(240,112,112,.12);color:var(--bad);cursor:default}.opb:not(.vac):hover{filter:brightness(1.25)}
 .mini th,.mini td{padding:4px 6px!important;font-size:.72rem!important}.mini .pill{font-size:.65rem;padding:1px 7px}.mini .bar{width:44px;height:6px}table.mini{min-width:760px}
@@ -62,7 +68,7 @@ const Q=[['DOC','¿Cuenta con documentación vigente, física o digital?',1],['S
  ['ETI','¿Cuenta con todas las etiquetas de seguridad y señalización completas y visibles?',0],['CARRET','¿Carretillas o diablos se encuentran completos?',0],['CARRET','¿Carretillas o diablos se encuentran funcionales?',0]];
 const $=id=>document.getElementById(id),esc=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const MES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-let PL={Villavicencio:[],Yopal:[]},plSede='Villavicencio',msgP='',D=[],vistos=null,F={sede:'',oper:'',mes:'',estado:'',q:''},unsub=null,correos=[],urlExcel='',msgC='',Vact=[];
+let plVer=false,PL={Villavicencio:[],Yopal:[]},plSede='Villavicencio',msgP='',D=[],vistos=null,F={sede:'',oper:'',mes:'',estado:'',q:''},unsub=null,correos=[],urlExcel='',msgC='',Vact=[];
 const fd=f=>{const[a,b]=String(f||'').split(' ');if(!a)return'—';const[y,m,d]=a.split('-');return `${d}/${m}/${y} ${(b||'').slice(0,5)}`};
 function login(msg=''){$('usr').innerHTML='';$('app').innerHTML=`<div class="card login"><h2 style="margin:0">Ingresar</h2><p style="color:var(--mut);margin:6px 0 0">Para revisar los reportes del checklist.</p>
   <form id="lf"><label>Correo<input id="em" type="email" required autocomplete="username"></label><label>Contraseña<input id="pw" type="password" required autocomplete="current-password"></label>
@@ -91,11 +97,11 @@ function pintar(nuevos=[]){
   G.sort((a,b)=>String(b.ord).localeCompare(String(a.ord)));
   const conNo=V.filter(x=>x.totalNo>0).length,cr=V.filter(x=>(x.criticosNo||[]).length).length,hoy=new Date().toISOString().slice(0,10);
   const NOs=[];V.forEach(x=>{const R=x.respuestas||{},it=[];Q.forEach(([c,qq,cr],i)=>{const r=R['q'+String(i+1).padStart(2,'0')]||{};if(r.r==='NO')it.push({n:i+1,c,q:qq,cr,obs:r.obs||''})});if(it.length||x.obsGeneral)NOs.push({x,it,og:x.obsGeneral||''})});
-  $('app').innerHTML=`<div class="card"><div class="mh"><b>Placas del formulario</b><small>Las placas que guardes aquí aparecen automáticamente en el formulario para la sede elegida.</small></div>
+  $('app').innerHTML=`<div class="card"><div class="mh plh"><div><b>Placas del formulario</b><small>Las placas que guardes aquí aparecen automáticamente en el formulario para la sede elegida.</small></div><button class="btn g" id="plt">${plVer?'▲ Ocultar placas':`▼ Mostrar placas (${PL.Villavicencio.length+PL.Yopal.length})`}</button></div><div class="plbody"${plVer?'':' hidden'}>
     <div class="fil"><label>Sede<select id="pls">${['Villavicencio','Yopal'].map(s=>`<option${s===plSede?' selected':''}>${s}</option>`).join('')}</select></label>
     <textarea id="pln" rows="2" placeholder="Escribe o pega de 1 a 200 placas (una por línea, o separadas por coma o espacio)" style="flex:1;min-width:260px;text-transform:uppercase;padding:9px 10px;border-radius:10px;border:1px solid var(--line);background:#0b1514;color:var(--ink);font:inherit"></textarea>
     <button class="btn" id="plg">Guardar placas</button>${PL[plSede].length?'<button class="btn g" id="plx">Eliminar todas</button>':''}<small style="color:var(--mut)">${PL[plSede].length}/200 placas en ${plSede}</small></div>
-    <div class="chips">${PL[plSede].map((p,i)=>`<span>${esc(p)}<button data-pd="${i}" title="Eliminar ${esc(p)}">✕</button></span>`).join('')||'<small style="color:var(--mut)">Aún no hay placas para esta sede.</small>'}</div><div class="msgc">${esc(msgP)}</div></div>
+    <div class="chips">${PL[plSede].map((p,i)=>`<span>${esc(p)}<button data-pd="${i}" title="Eliminar ${esc(p)}">✕</button></span>`).join('')||'<small style="color:var(--mut)">Aún no hay placas para esta sede.</small>'}</div><div class="msgc">${esc(msgP)}</div></div></div>
   <div class="card"><div class="fil">
     <label>Sede<select id="fs"><option value="">Todas</option>${['Villavicencio','Yopal'].map(s=>`<option${s===F.sede?' selected':''}>${s}</option>`).join('')}</select></label>
     <label>Operación<select id="fo"><option value="">Todas</option>${['Salida','Retorno'].map(s=>`<option${s===F.oper?' selected':''}>${s}</option>`).join('')}</select></label>
@@ -105,25 +111,28 @@ function pintar(nuevos=[]){
     <button class="btn" id="xls" title="Descarga un Excel por cada mes">⬇ Excel por mes</button></div></div>
    <div class="kpis"><div class="kpi"><b>${V.length}</b><span>Checklists</span></div><div class="kpi"><b>${V.filter(x=>String(x.fecha).startsWith(hoy)).length}</b><span>Enviados hoy</span></div>
     <div class="kpi ok"><b>${V.length-conNo}</b><span>Sin ningún NO</span></div><div class="kpi bad"><b>${conNo}</b><span>Con algún NO</span></div><div class="kpi bad"><b>${cr}</b><span>Con ítems críticos en NO</span></div></div>
-   <div class="card"><div class="mh"><b>Reportes</b><small>Cumplimiento salida y retorno: <b style="color:${P.length&&P.every(e=>e.pct===100)?'var(--ok)':'var(--bad)'}">${P.length?Math.round(P.filter(e=>e.pct===100).length/P.length*100):0}%</b> · cada placa debe hacer Salida y Retorno el mismo día</small></div>
-   <div class="tw"><table class="mini"><thead><tr><th>Fecha</th><th>Sede</th><th>Placa</th><th>Operación</th><th>Conductor(es)</th><th>Km</th><th>Resultado</th><th>Críticos</th><th>Cumplimiento salida y retorno</th></tr></thead><tbody>
+   <div class="card"><div class="mh"><b>Reportes</b><small>Cumplimiento salida y retorno: <b style="color:${P.length&&P.every(e=>e.pct===100)?'var(--ok)':'var(--bad)'}">${P.length?Math.round(P.filter(e=>e.pct===100).length/P.length*100):0}%</b> · cada placa debe hacer Salida y Retorno el mismo día${(()=>{const ds=V.filter(x=>x.duracionSeg!=null).map(x=>x.duracionSeg);if(!ds.length)return '';const m=Math.round(ds.reduce((a,b)=>a+b,0)/ds.length);return ` · Tiempo promedio de diligenciamiento: <b class="tprom">⏱ ${Math.floor(m/60)}:${String(m%60).padStart(2,'0')}</b>`})()}</small></div>
+   <div class="tw fijo"><table class="mini"><thead><tr><th>Fecha</th><th>Sede</th><th>Placa</th><th>Operación</th><th>Conductor(es)</th><th>Km</th><th>Resultado</th><th>Críticos</th><th>Cumplimiento salida y retorno</th><th>Tiem. Prom.</th></tr></thead><tbody>
    ${G.map(g=>{const dT=x=>x&&x.duracionSeg!=null?`<span class="durb ${x.operacion==='Retorno'?'p-r':x.operacion==='Salida'?'p-s':'p-ok'}">⏱ ${Math.floor(x.duracionSeg/60)}:${String(x.duracionSeg%60).padStart(2,'0')}</span>`:'';
      const S=g.sal,Rt=g.ret,op=(x,l,cl)=>x?`<span class="opc"><button class="opb ${cl}" data-id="${x.id}" title="Ver checklist de ${l}"><b>${l}</b> ${fd(x.fecha).slice(11)}</button>${dT(x)}</span>`:`<span class="opc"><span class="opb vac">${l} —</span></span>`;
      const L=[S,Rt].filter(Boolean),no=L.reduce((a,x)=>a+(x.totalNo||0),0),cr=L.reduce((a,x)=>a+((x.criticosNo||[]).length),0),c=g.pct===100?'var(--ok)':'var(--bad)';
      return `<tr class="${L.some(x=>nuevos.includes(x.id))?'nuevo':''}"><td>${fd(g.dia).slice(0,10)}</td><td>${esc(g.sede)}</td><td><b>${esc(g.placa)}</b></td>
-      <td>${g.sinOp?op(g.sinOp,'Checklist','p-ok'):op(S,'Salida','p-s')+' '+op(Rt,'Retorno','p-r')}</td><td>${esc([...new Set(L.concat(g.sinOp?[g.sinOp]:[]).map(x=>x.conductor))].join(' / '))}</td>
+      <td>${g.sinOp?op(g.sinOp,'Checklist','p-ok'):op(S,'Salida','p-s')+' '+op(Rt,'Retorno','p-r')}</td><td class="tx">${esc([...new Set(L.concat(g.sinOp?[g.sinOp]:[]).map(x=>String(x.conductor||'').toUpperCase()))].join(' / '))}</td>
       <td>${S||Rt?`${esc(S?S.km||'—':'—')} → ${esc(Rt?Rt.km||'—':'—')}`:esc(g.sinOp.km||'—')}</td>
       <td>${g.sinOp?(g.sinOp.totalNo?`<span class="pill p-no">${g.sinOp.totalNo} NO</span>`:'<span class="pill p-ok">Todo SI</span>'):no?`<span class="pill p-no">${no} NO</span>`:'<span class="pill p-ok">Todo SI</span>'}</td>
       <td>${(g.sinOp?(g.sinOp.criticosNo||[]).length:cr)?`<span class="pill p-cr">⚠ ${g.sinOp?(g.sinOp.criticosNo||[]).length:cr}</span>`:''}</td>
-      <td>${g.sinOp?'<span style="color:var(--mut)">—</span>':`<div class="bar"><i style="width:${g.pct}%;background:${c}"></i></div><b style="color:${c}">${g.pct}%${g.falta?' · falta '+g.falta:''}</b>`}</td></tr>`}).join('')||'<tr><td colspan="9" class="empty">No hay reportes con estos filtros.</td></tr>'}</tbody></table></div></div>
+      <td>${g.sinOp?'<span style="color:var(--mut)">—</span>':`<div class="bar"><i style="width:${g.pct}%;background:${c}"></i></div><b style="color:${c}">${g.pct}%${g.falta?' · falta '+g.falta:''}</b>`}</td>
+      <td>${(()=>{const ds=(g.sinOp?[g.sinOp]:[S,Rt]).filter(x=>x&&x.duracionSeg!=null).map(x=>x.duracionSeg);if(!ds.length)return '<span style="color:var(--mut)">—</span>';const m=Math.round(ds.reduce((a,b)=>a+b,0)/ds.length);
+        return `<b class="tprom" title="Promedio de ${ds.length} formulario${ds.length===1?'':'s'}">⏱ ${Math.floor(m/60)}:${String(m%60).padStart(2,'0')}</b>`})()}</td></tr>`}).join('')||'<tr><td colspan="10" class="empty">No hay reportes con estos filtros.</td></tr>'}</tbody></table></div></div>
    <div class="card"><div class="mh"><b>NO y observaciones por placa</b><small>${NOs.length} formulario${NOs.length===1?'':'s'} con NO u observaciones · fecha y hora en que se diligenció el formulario</small></div>
-    <div class="tw" style="max-height:460px"><table class="mini nog"><thead><tr><th>Fecha y hora</th><th>Sede</th><th>Placa</th><th>Operación</th><th>Conductor</th><th>Preguntas en NO y observaciones</th><th>Observaciones generales</th></tr></thead><tbody>
-    ${NOs.map(o=>`<tr><td>${fd(o.x.fecha)}</td><td>${esc(o.x.sede)}</td><td><b>${esc(o.x.placa)}</b></td><td>${o.x.operacion?`<span class="pill ${o.x.operacion==='Salida'?'p-s':'p-r'}">${esc(o.x.operacion)}</span>`:'—'}</td><td>${esc(o.x.conductor)}</td>
-      <td>${o.it.length?`<ul class="nol">${o.it.map(i=>`<li><span class="cat">${i.cr?'⚠ ':''}${i.c}</span> ${i.n}. ${esc(i.q)} <span class="ob">→ ${esc(i.obs)||'—'}</span></li>`).join('')}</ul>`:'<span style="color:var(--mut)">Sin NO</span>'}</td><td class="ob">${esc(o.og)||'—'}</td></tr>`).join('')||'<tr><td colspan="7" class="empty">No hay NO ni observaciones con estos filtros.</td></tr>'}</tbody></table></div></div>`;
+    <div class="tw fijo"><table class="mini nog"><thead><tr><th>Fecha y hora</th><th>Sede</th><th>Placa</th><th>Operación</th><th>Conductor</th><th>Preguntas en NO y observaciones</th><th>Observaciones generales</th></tr></thead><tbody>
+    ${NOs.map(o=>`<tr><td>${fd(o.x.fecha)}</td><td>${esc(o.x.sede)}</td><td><b>${esc(o.x.placa)}</b></td><td>${o.x.operacion?`<span class="pill ${o.x.operacion==='Salida'?'p-s':'p-r'}">${esc(o.x.operacion)}</span>`:'—'}</td><td class="tx">${esc(String(o.x.conductor||'').toUpperCase())}</td>
+      <td>${o.it.length?`<ul class="nol">${o.it.map(i=>`<li><span class="cat">${i.cr?'⚠ ':''}${i.c}</span> ${i.n}. ${esc(i.q)} <span class="ob tx">→ ${esc(String(i.obs||'').toUpperCase())||'—'}</span></li>`).join('')}</ul>`:'<span style="color:var(--mut)">Sin NO</span>'}</td><td class="ob tx">${esc(String(o.og||'').toUpperCase())||'—'}</td></tr>`).join('')||'<tr><td colspan="7" class="empty">No hay NO ni observaciones con estos filtros.</td></tr>'}</tbody></table></div></div>`;
   $('fs').onchange=e=>{F.sede=e.target.value;pintar()};$('fo').onchange=e=>{F.oper=e.target.value;pintar()};$('fm').onchange=e=>{F.mes=e.target.value;pintar()};$('fe').onchange=e=>{F.estado=e.target.value;pintar()};
   $('fq').oninput=e=>{F.q=e.target.value;clearTimeout(window.__t);window.__t=setTimeout(()=>{pintar();const i=$('fq');i.focus();i.setSelectionRange(i.value.length,i.value.length)},300)};
   document.querySelectorAll('.opb[data-id]').forEach(b=>b.onclick=()=>detalle(D.find(x=>x.id===b.dataset.id)));
   $('xls').onclick=()=>excel(V);
+  $('plt').onclick=()=>{plVer=!plVer;pintar()};
   $('pls').onchange=e=>{plSede=e.target.value;msgP='';pintar()};
   const gP=async l=>setDoc(doc(db,'config','placas_'+plSede),{placas:l});
   $('plg').onclick=async()=>{const lst=[...new Set($('pln').value.toUpperCase().split(/[\s,;]+/).map(v=>v.replace(/[^A-Z0-9]/g,'')).filter(Boolean))],ok=lst.filter(v=>v.length>=5&&v.length<=8),mal=lst.filter(v=>!ok.includes(v));
