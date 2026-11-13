@@ -152,15 +152,18 @@ function detalle(x){if(!x)return;const R=x.respuestas||{},d=$('det');
 async function libroXLSX(V){if(!window.XLSX){await new Promise((ok,er)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=ok;s.onerror=er;document.head.appendChild(s)})}
   const PP={};pares(D).forEach(e=>PP[e.dia+'|'+e.sede+'|'+e.placa]=e);
   const enc=['Fecha','Sede','Operación','Placa','Conductor','Kilometraje','Total SI','Total NO','Críticos en NO','Salida y retorno (día)','Tiempo de diligenciamiento'];Q.forEach(([c,q],i)=>{enc.push(`${i+1}. ${c} - ${q}`);enc.push(`Obs. ${i+1}`)});enc.push('Observaciones generales');
-  const rows=[enc,...V.map(x=>{const R=x.respuestas||{},e=PP[String(x.fecha||'').slice(0,10)+'|'+x.sede+'|'+x.placa],f=[x.fecha,x.sede,x.operacion||'',x.placa,x.conductor,x.km||'',x.totalSi,x.totalNo,(x.criticosNo||[]).join(' | '),e?(e.pct===100?'100% completo':'50% · falta '+e.falta):'',x.duracionSeg!=null?`${Math.floor(x.duracionSeg/60)}:${String(x.duracionSeg%60).padStart(2,'0')}`:''];Q.forEach((q,i)=>{const r=R['q'+String(i+1).padStart(2,'0')]||{};f.push(r.r||'');f.push(r.obs||'')});f.push(x.obsGeneral||'');return f})];
-  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Checklist');return wb}
+  const rows=[enc,...V.map(x=>{const U=v=>String(v??'').replace(/\s+/g,' ').trim().toUpperCase(),R=x.respuestas||{},e=PP[String(x.fecha||'').slice(0,10)+'|'+x.sede+'|'+x.placa],f=[x.fecha,U(x.sede),U(x.operacion),U(x.placa),U(x.conductor),x.km||'',x.totalSi,x.totalNo,U((x.criticosNo||[]).join(' | ')),e?(e.pct===100?'100% completo':'50% · falta '+e.falta):'',x.duracionSeg!=null?`${Math.floor(x.duracionSeg/60)}:${String(x.duracionSeg%60).padStart(2,'0')}`:''];Q.forEach((q,i)=>{const r=R['q'+String(i+1).padStart(2,'0')]||{};f.push(U(r.r));f.push(U(r.obs))});f.push(U(x.obsGeneral));return f})];
+  // ordenado por fecha y hora (de la más antigua a la más reciente), encabezados en mayúsculas y columnas con ancho uniforme
+  rows[0]=rows[0].map(v=>String(v).toUpperCase());const cuerpo=rows.slice(1).sort((a,b)=>String(a[0]).localeCompare(String(b[0])));
+  const ws=XLSX.utils.aoa_to_sheet([rows[0],...cuerpo]);ws['!cols']=rows[0].map((v,i)=>({wch:i<10?[19,14,10,10,28,12,9,9,40,22][i]:(i===rows[0].length-1?40:(i-10)%2?30:12)}));ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:cuerpo.length,c:rows[0].length-1}})};
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Checklist');return wb}
 const nombreX=()=>`checklist_preoperacional_${new Date().toISOString().slice(0,10)}.xlsx`;
 async function excel(V){if(!V.length)return alert('No hay reportes para descargar con estos filtros.');
   const meses=[...new Set(V.map(x=>String(x.fecha||'').slice(0,7)).filter(Boolean))].sort();
   for(const mm of meses){const Vm=V.filter(x=>String(x.fecha||'').startsWith(mm)),wb=await libroXLSX(Vm),Pm=pares(D.filter(x=>String(x.fecha||'').startsWith(mm)&&(!F.sede||x.sede===F.sede)));
-    const sr=[['Día','Sede','Placa','Conductor(es)','Salida','Retorno','Cumplimiento %','Estado'],...Pm.map(e=>[e.dia,e.sede,e.placa,[...e.cond].join(', '),e.sal?'SI':'NO',e.ret?'SI':'NO',e.pct,e.pct===100?'Completo':'ALERTA: falta '+e.falta])];
+    const sr=[['DÍA','SEDE','PLACA','CONDUCTOR(ES)','SALIDA','RETORNO','CUMPLIMIENTO %','ESTADO'],...Pm.slice().sort((a,b)=>a.dia.localeCompare(b.dia)||a.placa.localeCompare(b.placa)).map(e=>[e.dia,e.sede.toUpperCase(),e.placa.toUpperCase(),[...e.cond].map(c=>String(c).toUpperCase()).join(' / '),e.sal?'SI':'NO',e.ret?'SI':'NO',e.pct,e.pct===100?'COMPLETO':'ALERTA: FALTA '+e.falta.toUpperCase()])];
     const ws=XLSX.utils.aoa_to_sheet(sr);ws['!cols']=[{wch:12},{wch:14},{wch:10},{wch:28},{wch:8},{wch:8},{wch:14},{wch:24}];XLSX.utils.book_append_sheet(wb,ws,'Salida y retorno');
-    const al=Pm.filter(e=>e.pct<100);XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['ALERTAS · Placas sin Salida y Retorno el mismo día'],['Día','Sede','Placa','Falta'],...al.map(e=>[e.dia,e.sede,e.placa,e.falta])]),'Alertas');
+    const al=Pm.filter(e=>e.pct<100);XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['ALERTAS · PLACAS SIN SALIDA Y RETORNO EL MISMO DÍA'],['DÍA','SEDE','PLACA','FALTA'],...al.map(e=>[e.dia,e.sede.toUpperCase(),e.placa.toUpperCase(),e.falta.toUpperCase()])]),'Alertas');
     XLSX.writeFile(wb,`checklist_preoperacional_${mm}${F.sede?'_'+F.sede:''}.xlsx`);await new Promise(r=>setTimeout(r,500))}}
 
 </script></body></html>
