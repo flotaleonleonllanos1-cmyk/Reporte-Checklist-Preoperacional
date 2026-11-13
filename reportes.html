@@ -60,7 +60,7 @@ const Q=[['DOC','¿Cuenta con documentación vigente, física o digital?',1],['S
  ['ETI','¿Cuenta con todas las etiquetas de seguridad y señalización completas y visibles?',0],['CARRET','¿Carretillas o diablos se encuentran completos?',0],['CARRET','¿Carretillas o diablos se encuentran funcionales?',0]];
 const $=id=>document.getElementById(id),esc=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const MES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-let D=[],vistos=null,F={sede:'',oper:'',mes:'',estado:'',q:''},unsub=null,correos=[],urlExcel='',msgC='',Vact=[];
+let PL={Villavicencio:[],Yopal:[]},plSede='Villavicencio',msgP='',D=[],vistos=null,F={sede:'',oper:'',mes:'',estado:'',q:''},unsub=null,correos=[],urlExcel='',msgC='',Vact=[];
 const fd=f=>{const[a,b]=String(f||'').split(' ');if(!a)return'—';const[y,m,d]=a.split('-');return `${d}/${m}/${y} ${(b||'').slice(0,5)}`};
 function login(msg=''){$('usr').innerHTML='';$('app').innerHTML=`<div class="card login"><h2 style="margin:0">Ingresar</h2><p style="color:var(--mut);margin:6px 0 0">Para revisar los reportes del checklist.</p>
   <form id="lf"><label>Correo<input id="em" type="email" required autocomplete="username"></label><label>Contraseña<input id="pw" type="password" required autocomplete="current-password"></label>
@@ -69,6 +69,7 @@ function login(msg=''){$('usr').innerHTML='';$('app').innerHTML=`<div class="car
 onAuthStateChanged(auth,u=>{if(unsub){unsub();unsub=null}if(!u){login();return}
   $('usr').innerHTML=`<span class="live">En vivo</span> <small style="color:var(--mut);margin:0 8px">${esc(u.email)}</small><button class="btn g" id="out">Salir</button>`;$('out').onclick=()=>signOut(auth);
   $('app').innerHTML='<p class="empty">Cargando reportes…</p>';
+  ['Villavicencio','Yopal'].forEach(s=>onSnapshot(doc(db,'config','placas_'+s),d=>{PL[s]=d.exists()?(d.data().placas||[]):[];if(vistos)pintar()},()=>{}));
   unsub=onSnapshot(query(collection(db,'checklists'),orderBy('creado','desc'),limit(2000)),snap=>{const nuevos=vistos?snap.docs.filter(d=>!vistos.has(d.id)).map(d=>d.id):[];
     vistos=new Set(snap.docs.map(d=>d.id));D=snap.docs.map(d=>({id:d.id,...d.data({serverTimestamps:'estimate'})}));pintar(nuevos)},
     x=>{$('app').innerHTML=`<p class="empty">No se pudieron leer los reportes (${esc(x.code)}). Revisa las reglas de Firestore.</p>`})});
@@ -87,7 +88,12 @@ function pintar(nuevos=[]){
   G.forEach(g=>{if(g.sinOp)return;const e=PM[g.dia+'|'+g.sede+'|'+g.placa]||{pct:g.sal&&g.ret?100:50,falta:g.sal&&!g.ret?'Retorno':!g.sal?'Salida':''};g.pct=e.pct;g.falta=e.falta});
   G.sort((a,b)=>String(b.ord).localeCompare(String(a.ord)));
   const conNo=V.filter(x=>x.totalNo>0).length,cr=V.filter(x=>(x.criticosNo||[]).length).length,hoy=new Date().toISOString().slice(0,10);
-  $('app').innerHTML=`<div class="card"><div class="fil">
+  const NOs=[];V.forEach(x=>{const R=x.respuestas||{};Q.forEach(([c,qq,cr],i)=>{const r=R['q'+String(i+1).padStart(2,'0')]||{};if(r.r==='NO')NOs.push({x,n:i+1,c,q:qq,cr,obs:r.obs||''})});if(x.obsGeneral)NOs.push({x,n:'',c:'OBS',q:'Observaciones generales',cr:0,obs:x.obsGeneral})});
+  $('app').innerHTML=`<div class="card"><div class="mh"><b>Placas del formulario</b><small>Las placas que guardes aquí aparecen automáticamente en el formulario para la sede elegida.</small></div>
+    <div class="fil"><label>Sede<select id="pls">${['Villavicencio','Yopal'].map(s=>`<option${s===plSede?' selected':''}>${s}</option>`).join('')}</select></label>
+    <input id="pln" placeholder="Placa, ej: TRK494" maxlength="8" style="text-transform:uppercase;width:160px"><button class="btn" id="plg">Guardar</button><small style="color:var(--mut)">${PL[plSede].length} placa${PL[plSede].length===1?'':'s'} en ${plSede}</small></div>
+    <div class="chips">${PL[plSede].map((p,i)=>`<span>${esc(p)}<button data-pd="${i}" title="Eliminar ${esc(p)}">✕</button></span>`).join('')||'<small style="color:var(--mut)">Aún no hay placas para esta sede.</small>'}</div><div class="msgc">${esc(msgP)}</div></div>
+  <div class="card"><div class="fil">
     <label>Sede<select id="fs"><option value="">Todas</option>${['Villavicencio','Yopal'].map(s=>`<option${s===F.sede?' selected':''}>${s}</option>`).join('')}</select></label>
     <label>Operación<select id="fo"><option value="">Todas</option>${['Salida','Retorno'].map(s=>`<option${s===F.oper?' selected':''}>${s}</option>`).join('')}</select></label>
     <label>Mes<select id="fm"><option value="">Todos</option>${meses.map(k=>`<option value="${k}"${k===F.mes?' selected':''}>${MES[+k.slice(5)-1]} ${k.slice(0,4)}</option>`).join('')}</select></label>
@@ -105,11 +111,21 @@ function pintar(nuevos=[]){
       <td>${S||Rt?`${esc(S?S.km||'—':'—')} → ${esc(Rt?Rt.km||'—':'—')}`:esc(g.sinOp.km||'—')}</td>
       <td>${g.sinOp?(g.sinOp.totalNo?`<span class="pill p-no">${g.sinOp.totalNo} NO</span>`:'<span class="pill p-ok">Todo SI</span>'):no?`<span class="pill p-no">${no} NO</span>`:'<span class="pill p-ok">Todo SI</span>'}</td>
       <td>${(g.sinOp?(g.sinOp.criticosNo||[]).length:cr)?`<span class="pill p-cr">⚠ ${g.sinOp?(g.sinOp.criticosNo||[]).length:cr}</span>`:''}</td>
-      <td>${g.sinOp?'<span style="color:var(--mut)">—</span>':`<div class="bar"><i style="width:${g.pct}%;background:${c}"></i></div><b style="color:${c}">${g.pct}%${g.falta?' · falta '+g.falta:''}</b>`}</td></tr>`}).join('')||'<tr><td colspan="9" class="empty">No hay reportes con estos filtros.</td></tr>'}</tbody></table></div></div>`;
+      <td>${g.sinOp?'<span style="color:var(--mut)">—</span>':`<div class="bar"><i style="width:${g.pct}%;background:${c}"></i></div><b style="color:${c}">${g.pct}%${g.falta?' · falta '+g.falta:''}</b>`}</td></tr>`}).join('')||'<tr><td colspan="9" class="empty">No hay reportes con estos filtros.</td></tr>'}</tbody></table></div></div>
+   <div class="card"><div class="mh"><b>NO y observaciones por placa</b><small>${NOs.length} registro${NOs.length===1?'':'s'} · fecha y hora en que se diligenció el formulario</small></div>
+    <div class="tw" style="max-height:420px"><table class="mini"><thead><tr><th>Fecha y hora</th><th>Sede</th><th>Placa</th><th>Operación</th><th>Conductor</th><th>Pregunta en NO</th><th>Observación</th></tr></thead><tbody>
+    ${NOs.map(o=>`<tr><td>${fd(o.x.fecha)}</td><td>${esc(o.x.sede)}</td><td><b>${esc(o.x.placa)}</b></td><td>${o.x.operacion?`<span class="pill ${o.x.operacion==='Salida'?'p-s':'p-r'}">${esc(o.x.operacion)}</span>`:'—'}</td><td>${esc(o.x.conductor)}</td>
+      <td>${o.n?`<span class="cat">${o.cr?'⚠ ':''}${o.c}</span> ${o.n}. ${esc(o.q)}`:'<b>Observaciones generales</b>'}</td><td class="ob">${esc(o.obs)||'—'}</td></tr>`).join('')||'<tr><td colspan="7" class="empty">No hay NO ni observaciones con estos filtros.</td></tr>'}</tbody></table></div></div>`;
   $('fs').onchange=e=>{F.sede=e.target.value;pintar()};$('fo').onchange=e=>{F.oper=e.target.value;pintar()};$('fm').onchange=e=>{F.mes=e.target.value;pintar()};$('fe').onchange=e=>{F.estado=e.target.value;pintar()};
   $('fq').oninput=e=>{F.q=e.target.value;clearTimeout(window.__t);window.__t=setTimeout(()=>{pintar();const i=$('fq');i.focus();i.setSelectionRange(i.value.length,i.value.length)},300)};
   document.querySelectorAll('.opb[data-id]').forEach(b=>b.onclick=()=>detalle(D.find(x=>x.id===b.dataset.id)));
-  $('xls').onclick=()=>excel(V);Vact=V;
+  $('xls').onclick=()=>excel(V);
+  $('pls').onchange=e=>{plSede=e.target.value;msgP='';pintar()};
+  const gP=async l=>setDoc(doc(db,'config','placas_'+plSede),{placas:l});
+  $('plg').onclick=async()=>{const v=$('pln').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');if(v.length<5){msgP='Escribe una placa válida (ej: TRK494).';return pintar()}
+    if(PL[plSede].includes(v)){msgP=`${v} ya está en ${plSede}.`;return pintar()}try{await gP([...PL[plSede],v].sort());msgP=`✔ ${v} guardada en ${plSede}.`}catch(x){msgP='No se pudo guardar ('+x.code+').'}pintar();setTimeout(()=>{const i=$('pln');if(i)i.focus()},50)};
+  $('pln').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();$('plg').click()}};
+  document.querySelectorAll('[data-pd]').forEach(b=>b.onclick=async()=>{const v=PL[plSede][+b.dataset.pd];if(!confirm(`¿Eliminar la placa ${v} de ${plSede}?`))return;try{await gP(PL[plSede].filter(x=>x!==v));msgP=`Placa ${v} eliminada.`}catch(x){msgP='No se pudo eliminar ('+x.code+').'}pintar()});Vact=V;
 }
 function detalle(x){if(!x)return;const R=x.respuestas||{},d=$('det');
   d.innerHTML=`<div class="dh"><div><b style="font-size:1.15rem">${esc(x.placa)}</b> · ${esc(x.conductor)}<br><small style="color:var(--mut)">${fd(x.fecha)} · ${esc(x.sede)} · ${esc(x.operacion||'—')} · Km ${esc(x.km||'—')}</small></div><button class="btn g" id="dc">✕ Cerrar</button></div>

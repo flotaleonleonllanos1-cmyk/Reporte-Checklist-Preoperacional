@@ -67,7 +67,11 @@ $('lst').innerHTML=Q.map(([c,q,cr],i)=>`<li class="${cr?'cr':''}" data-q="${i}">
  <div class="b"><label class="si"><input type="radio" name="q${i}" value="SI"><span>SI</span></label><label class="no"><input type="radio" name="q${i}" value="NO"><span>NO</span></label></div>
  <textarea class="obs" id="o${i}" hidden maxlength="500" placeholder="Observaciones (obligatorio si es NO)"></textarea></li>`).join('');
 // placas de la sede (config/placas_Villavicencio, config/placas_Yopal) como sugerencias
-$('sede').addEventListener('change',async()=>{const s=$('sede').value;$('plas').innerHTML='';if(!s)return;try{const d=await getDoc(doc(db,'config','placas_'+s));const l=d.exists()?(d.data().placas||[]):[];$('plas').innerHTML=l.map(p=>`<option value="${esc(p)}">`).join('')}catch(x){}});
+// placas de la sede (las registradas en Reportes): si hay lista, la placa se elige de un desplegable
+const plIn=$('placa').outerHTML;
+$('sede').addEventListener('change',async()=>{const s=$('sede').value;let l=[];if(s){try{const d=await getDoc(doc(db,'config','placas_'+s));l=d.exists()?(d.data().placas||[]):[]}catch(x){}}
+  const cur=$('placa');if(l.length){const sel=document.createElement('select');sel.id='placa';sel.required=true;sel.innerHTML='<option value="">Elige la placa…</option>'+l.map(p=>`<option>${esc(p)}</option>`).join('');cur.replaceWith(sel)}
+  else if(cur.tagName==='SELECT'){const w=document.createElement('div');w.innerHTML=plIn;cur.replaceWith(w.firstChild)}});
 let urlExcel=URL_EXCEL;getDoc(doc(db,'config','excel')).then(d=>{if(d.exists()&&d.data().url)urlExcel=d.data().url}).catch(()=>{});
 $('f').addEventListener('change',e=>{const r=e.target;if(r.type!=='radio')return;const i=r.name.slice(1),o=$('o'+i),li=r.closest('li');o.hidden=r.value!=='NO';li.classList.toggle('no',r.value==='NO');li.classList.toggle('si',r.value==='SI');if(r.value==='NO')o.focus()});
 $('f').onsubmit=async e=>{e.preventDefault();const m=$('msg'),b=$('send'),sede=$('sede').value,pl=$('placa').value.trim().toUpperCase(),nm=$('nom').value.trim();
