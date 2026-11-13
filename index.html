@@ -18,6 +18,8 @@ li.cr{border-left:4px solid var(--acc)}li.no{border-color:#e05252;background:rgb
 .b span{display:inline-block;min-width:58px;text-align:center;padding:9px 10px;border-radius:10px;border:1px solid var(--line);font-weight:900}
 .si input:checked+span{background:linear-gradient(180deg,#1ed9b0,#0e9c86);color:#062c28;border-color:#0e9c86}.no input:checked+span{background:linear-gradient(180deg,#f07070,#c0392b);color:#fff;border-color:#c0392b}
 textarea.obs{grid-column:1/-1;min-height:66px}
+.timer{display:grid;align-content:center;gap:2px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:#0b1514}.timer span{font-size:.75rem;font-weight:800;color:var(--mut)}
+.timer b{font-size:1.4rem;font-variant-numeric:tabular-nums;color:var(--mut)}.timer.on b{color:#f2c94c}.timer small{font-size:.7rem;color:var(--mut)}
 .obsg{margin-top:12px}.obsg textarea{min-height:90px}
 .falta-box{border:1px solid #e05252;background:rgba(224,82,82,.14);color:#ffd2d2;border-radius:12px;padding:10px 12px;margin-top:12px;font-size:.9rem}.falta-box ul{margin:6px 0 0 18px;padding:0}.falta-box li{display:list-item;border:0;background:none;padding:1px 0}
 .falta{outline:2px solid #e05252!important;outline-offset:2px}li.falta{background:rgba(224,82,82,.1)}
@@ -33,7 +35,8 @@ button:disabled{opacity:.7}#msg{margin-top:8px;color:#f2c94c;font-weight:700;min
  <label>Placa *<input id="placa" required maxlength="8" placeholder="Ej: TRK494" list="plas" autocomplete="off" style="text-transform:uppercase"><datalist id="plas"></datalist></label>
  <label>Conductor *<input id="nom" required maxlength="80" placeholder="Nombre completo" autocomplete="name"></label>
  <label>Operación *<select id="oper" required><option value="">Elige…</option><option>Salida</option><option>Retorno</option></select></label>
- <label>Kilometraje<input id="km" type="number" min="0" inputmode="numeric" placeholder="Opcional"></label></div>
+ <label>Kilometraje<input id="km" type="number" min="0" inputmode="numeric" placeholder="Opcional"></label>
+ <div class="timer" aria-live="off"><span>Tiempo de diligenciamiento</span><b id="crono">0:00</b><small id="cronoest">Empieza al diligenciar</small></div></div>
  <div class="ley"><span>⚠ = ítem crítico</span><span>Si respondes <b>NO</b>, escribe la observación.</span></div></div>
 <div class="card"><ol id="lst"></ol>
 <label class="obsg">Observaciones<textarea id="obsg" maxlength="1500" placeholder="Escribe aquí cualquier observación adicional (opcional)"></textarea></label>
@@ -73,6 +76,10 @@ $('sede').addEventListener('change',async()=>{const s=$('sede').value;let l=[];i
   const cur=$('placa');if(l.length){const sel=document.createElement('select');sel.id='placa';sel.required=true;sel.innerHTML='<option value="">Elige la placa…</option>'+l.map(p=>`<option>${esc(p)}</option>`).join('');cur.replaceWith(sel)}
   else if(cur.tagName==='SELECT'){const w=document.createElement('div');w.innerHTML=plIn;cur.replaceWith(w.firstChild)}});
 let urlExcel=URL_EXCEL;getDoc(doc(db,'config','excel')).then(d=>{if(d.exists()&&d.data().url)urlExcel=d.data().url}).catch(()=>{});
+// Temporizador: arranca con la primera respuesta o dato escrito y se detiene al enviar
+let t0=null,tFin=null,tInt=null;const fmtT=s=>`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+const arrancar=()=>{if(t0)return;t0=Date.now();$('cronoest').textContent='En curso…';$('crono').parentElement.classList.add('on');tInt=setInterval(()=>{$('crono').textContent=fmtT(Math.round((Date.now()-t0)/1000))},1000)};
+$('f').addEventListener('input',arrancar,true);$('f').addEventListener('change',arrancar,true);
 $('f').addEventListener('change',e=>{const r=e.target;if(r.type!=='radio')return;const i=r.name.slice(1),o=$('o'+i),li=r.closest('li');o.hidden=r.value!=='NO';li.classList.toggle('no',r.value==='NO');li.classList.toggle('si',r.value==='SI');if(r.value==='NO')o.focus()});
 $('f').onsubmit=async e=>{e.preventDefault();const m=$('msg'),b=$('send'),sede=$('sede').value,pl=$('placa').value.trim().toUpperCase(),nm=$('nom').value.trim();
  document.querySelectorAll('.falta').forEach(x=>x.classList.remove('falta'));const fal=[],res=[],fz=$('falta');
@@ -88,10 +95,12 @@ $('f').onsubmit=async e=>{e.preventDefault();const m=$('msg'),b=$('send'),sede=$
   criticosNo:Q.filter((q,i)=>q[2]&&res[i].v==='NO').map(q=>q[0]+' - '+q[1]).join(' | '),preguntas:Q.map(q=>(q[2]?'⚠ ':'')+q[0]+' - '+q[1]),respuestas:res.map(r=>r.v),observaciones:res.map(r=>r.o),aceptacion:'SI',obsGeneral:$('obsg').value.trim()};
  b.disabled=true;b.textContent='Enviando…';
  try{const respuestas={};res.forEach((r,i)=>respuestas['q'+String(i+1).padStart(2,'0')]={r:r.v,obs:r.o});
-  await addDoc(collection(db,'checklists'),{fecha:data.fecha,creado:serverTimestamp(),sede,placa:pl,conductor:nm,operacion:oper,km:data.km,totalSi:data.si,totalNo:no,
+  tFin=Date.now();const dur=t0?Math.round((tFin-t0)/1000):0;data.duracion=fmtT(dur);
+  await addDoc(collection(db,'checklists'),{duracionSeg:dur,inicio:t0?new Date(t0).toISOString():'',fecha:data.fecha,creado:serverTimestamp(),sede,placa:pl,conductor:nm,operacion:oper,km:data.km,totalSi:data.si,totalNo:no,
     criticosNo:Q.filter((q,i)=>q[2]&&res[i].v==='NO').map(q=>q[0]+' - '+q[1]),respuestas,obsGeneral:data.obsGeneral,aceptacion:true,origen:'enlace'});
   if(urlExcel)fetch(urlExcel,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(data)}).catch(()=>{});
-  document.querySelector('main').innerHTML=`<div class="card"><h2 style="margin:0">✔ Checklist enviado</h2><p>Placa <b>${esc(pl)}</b> · ${esc(nm)} · ${esc(sede)} · <b>${esc(oper)}</b><br>${data.fecha} · ${no} ítem${no===1?'':'s'} en NO</p>
+  clearInterval(tInt);
+  document.querySelector('main').innerHTML=`<div class="card"><h2 style="margin:0">✔ Checklist enviado</h2><p style="margin:6px 0 0">⏱ Tiempo de diligenciamiento: <b>${data.duracion}</b></p><p>Placa <b>${esc(pl)}</b> · ${esc(nm)} · ${esc(sede)} · <b>${esc(oper)}</b><br>${data.fecha} · ${no} ítem${no===1?'':'s'} en NO</p>
    ${data.obsGeneral?`<p><b>Observaciones:</b> ${esc(data.obsGeneral)}</p>`:''}${no?`<ul>${res.map((r,i)=>r.v==='NO'?`<li style="display:list-item;border:0;padding:2px 0;background:none">${esc(Q[i][0]+' - '+Q[i][1])}: <i>${esc(r.o)}</i></li>`:'').join('')}</ul>`:''}<button onclick="location.reload()">Llenar otro checklist</button></div>`}
  catch(x){console.error(x);m.textContent='No se pudo guardar el checklist'+(x&&x.code==='permission-denied'?' (revisa las reglas de Firestore)':x&&x.code==='unavailable'?' (sin conexión)':'')+'. Intenta de nuevo.';b.disabled=false;b.textContent='Enviar'}};
 </script></body></html>

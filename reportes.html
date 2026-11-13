@@ -30,6 +30,8 @@ dialog::backdrop{background:rgba(0,0,0,.6)}.dh{padding:14px 16px;border-bottom:1
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.chips span{display:inline-flex;align-items:center;gap:6px;padding:4px 6px 4px 10px;border-radius:999px;background:rgba(19,224,196,.12);border:1px solid rgba(19,224,196,.4);font-size:.84rem}
 .chips button{border:0;background:rgba(240,112,112,.25);color:#fff;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:.7rem;line-height:1}
 .msgc{color:#f2c94c;font-weight:700;margin-top:6px;min-height:1em}.btn:disabled{opacity:.5;cursor:not-allowed}
+.opc{display:inline-grid;justify-items:center;gap:1px;vertical-align:top;margin-right:4px}.durb{font-size:.62rem;font-weight:800;border-radius:999px;padding:0 7px}.durb.p-s{background:rgba(94,200,242,.12);color:#7fd3f5}.durb.p-r{background:rgba(155,225,93,.12);color:#b8ec84}.durb.p-ok{background:rgba(30,217,176,.12);color:var(--ok)}
+.nol{margin:0;padding-left:14px}.nol li{margin:1px 0}.nog td{vertical-align:top}
 .opb{display:inline-flex;gap:4px;align-items:center;border:0;border-radius:999px;padding:2px 8px;font:inherit;font-size:.68rem;cursor:pointer;margin:1px 0}.opb.p-s{background:rgba(94,200,242,.18);color:#7fd3f5}.opb.p-r{background:rgba(155,225,93,.18);color:#b8ec84}.opb.p-ok{background:rgba(30,217,176,.18);color:var(--ok)}.opb.vac{background:rgba(240,112,112,.12);color:var(--bad);cursor:default}.opb:not(.vac):hover{filter:brightness(1.25)}
 .mini th,.mini td{padding:4px 6px!important;font-size:.72rem!important}.mini .pill{font-size:.65rem;padding:1px 7px}.mini .bar{width:44px;height:6px}table.mini{min-width:760px}
 .alerta{margin-top:12px;border:1px solid var(--bad);background:rgba(240,112,112,.13);color:#ffd2d2;border-radius:12px;padding:10px 14px;font-size:.9rem}
@@ -88,10 +90,11 @@ function pintar(nuevos=[]){
   G.forEach(g=>{if(g.sinOp)return;const e=PM[g.dia+'|'+g.sede+'|'+g.placa]||{pct:g.sal&&g.ret?100:50,falta:g.sal&&!g.ret?'Retorno':!g.sal?'Salida':''};g.pct=e.pct;g.falta=e.falta});
   G.sort((a,b)=>String(b.ord).localeCompare(String(a.ord)));
   const conNo=V.filter(x=>x.totalNo>0).length,cr=V.filter(x=>(x.criticosNo||[]).length).length,hoy=new Date().toISOString().slice(0,10);
-  const NOs=[];V.forEach(x=>{const R=x.respuestas||{};Q.forEach(([c,qq,cr],i)=>{const r=R['q'+String(i+1).padStart(2,'0')]||{};if(r.r==='NO')NOs.push({x,n:i+1,c,q:qq,cr,obs:r.obs||''})});if(x.obsGeneral)NOs.push({x,n:'',c:'OBS',q:'Observaciones generales',cr:0,obs:x.obsGeneral})});
+  const NOs=[];V.forEach(x=>{const R=x.respuestas||{},it=[];Q.forEach(([c,qq,cr],i)=>{const r=R['q'+String(i+1).padStart(2,'0')]||{};if(r.r==='NO')it.push({n:i+1,c,q:qq,cr,obs:r.obs||''})});if(it.length||x.obsGeneral)NOs.push({x,it,og:x.obsGeneral||''})});
   $('app').innerHTML=`<div class="card"><div class="mh"><b>Placas del formulario</b><small>Las placas que guardes aquí aparecen automáticamente en el formulario para la sede elegida.</small></div>
     <div class="fil"><label>Sede<select id="pls">${['Villavicencio','Yopal'].map(s=>`<option${s===plSede?' selected':''}>${s}</option>`).join('')}</select></label>
-    <input id="pln" placeholder="Placa, ej: TRK494" maxlength="8" style="text-transform:uppercase;width:160px"><button class="btn" id="plg">Guardar</button><small style="color:var(--mut)">${PL[plSede].length} placa${PL[plSede].length===1?'':'s'} en ${plSede}</small></div>
+    <textarea id="pln" rows="2" placeholder="Escribe o pega de 1 a 200 placas (una por línea, o separadas por coma o espacio)" style="flex:1;min-width:260px;text-transform:uppercase;padding:9px 10px;border-radius:10px;border:1px solid var(--line);background:#0b1514;color:var(--ink);font:inherit"></textarea>
+    <button class="btn" id="plg">Guardar placas</button>${PL[plSede].length?'<button class="btn g" id="plx">Eliminar todas</button>':''}<small style="color:var(--mut)">${PL[plSede].length}/200 placas en ${plSede}</small></div>
     <div class="chips">${PL[plSede].map((p,i)=>`<span>${esc(p)}<button data-pd="${i}" title="Eliminar ${esc(p)}">✕</button></span>`).join('')||'<small style="color:var(--mut)">Aún no hay placas para esta sede.</small>'}</div><div class="msgc">${esc(msgP)}</div></div>
   <div class="card"><div class="fil">
     <label>Sede<select id="fs"><option value="">Todas</option>${['Villavicencio','Yopal'].map(s=>`<option${s===F.sede?' selected':''}>${s}</option>`).join('')}</select></label>
@@ -104,7 +107,8 @@ function pintar(nuevos=[]){
     <div class="kpi ok"><b>${V.length-conNo}</b><span>Sin ningún NO</span></div><div class="kpi bad"><b>${conNo}</b><span>Con algún NO</span></div><div class="kpi bad"><b>${cr}</b><span>Con ítems críticos en NO</span></div></div>
    <div class="card"><div class="mh"><b>Reportes</b><small>Cumplimiento salida y retorno: <b style="color:${P.length&&P.every(e=>e.pct===100)?'var(--ok)':'var(--bad)'}">${P.length?Math.round(P.filter(e=>e.pct===100).length/P.length*100):0}%</b> · cada placa debe hacer Salida y Retorno el mismo día</small></div>
    <div class="tw"><table class="mini"><thead><tr><th>Fecha</th><th>Sede</th><th>Placa</th><th>Operación</th><th>Conductor(es)</th><th>Km</th><th>Resultado</th><th>Críticos</th><th>Cumplimiento salida y retorno</th></tr></thead><tbody>
-   ${G.map(g=>{const S=g.sal,Rt=g.ret,op=(x,l,cl)=>x?`<button class="opb ${cl}" data-id="${x.id}" title="Ver checklist de ${l}"><b>${l}</b> ${fd(x.fecha).slice(11)}</button>`:`<span class="opb vac">${l} —</span>`;
+   ${G.map(g=>{const dT=x=>x&&x.duracionSeg!=null?`<span class="durb ${x.operacion==='Retorno'?'p-r':x.operacion==='Salida'?'p-s':'p-ok'}">⏱ ${Math.floor(x.duracionSeg/60)}:${String(x.duracionSeg%60).padStart(2,'0')}</span>`:'';
+     const S=g.sal,Rt=g.ret,op=(x,l,cl)=>x?`<span class="opc"><button class="opb ${cl}" data-id="${x.id}" title="Ver checklist de ${l}"><b>${l}</b> ${fd(x.fecha).slice(11)}</button>${dT(x)}</span>`:`<span class="opc"><span class="opb vac">${l} —</span></span>`;
      const L=[S,Rt].filter(Boolean),no=L.reduce((a,x)=>a+(x.totalNo||0),0),cr=L.reduce((a,x)=>a+((x.criticosNo||[]).length),0),c=g.pct===100?'var(--ok)':'var(--bad)';
      return `<tr class="${L.some(x=>nuevos.includes(x.id))?'nuevo':''}"><td>${fd(g.dia).slice(0,10)}</td><td>${esc(g.sede)}</td><td><b>${esc(g.placa)}</b></td>
       <td>${g.sinOp?op(g.sinOp,'Checklist','p-ok'):op(S,'Salida','p-s')+' '+op(Rt,'Retorno','p-r')}</td><td>${esc([...new Set(L.concat(g.sinOp?[g.sinOp]:[]).map(x=>x.conductor))].join(' / '))}</td>
@@ -112,19 +116,22 @@ function pintar(nuevos=[]){
       <td>${g.sinOp?(g.sinOp.totalNo?`<span class="pill p-no">${g.sinOp.totalNo} NO</span>`:'<span class="pill p-ok">Todo SI</span>'):no?`<span class="pill p-no">${no} NO</span>`:'<span class="pill p-ok">Todo SI</span>'}</td>
       <td>${(g.sinOp?(g.sinOp.criticosNo||[]).length:cr)?`<span class="pill p-cr">⚠ ${g.sinOp?(g.sinOp.criticosNo||[]).length:cr}</span>`:''}</td>
       <td>${g.sinOp?'<span style="color:var(--mut)">—</span>':`<div class="bar"><i style="width:${g.pct}%;background:${c}"></i></div><b style="color:${c}">${g.pct}%${g.falta?' · falta '+g.falta:''}</b>`}</td></tr>`}).join('')||'<tr><td colspan="9" class="empty">No hay reportes con estos filtros.</td></tr>'}</tbody></table></div></div>
-   <div class="card"><div class="mh"><b>NO y observaciones por placa</b><small>${NOs.length} registro${NOs.length===1?'':'s'} · fecha y hora en que se diligenció el formulario</small></div>
-    <div class="tw" style="max-height:420px"><table class="mini"><thead><tr><th>Fecha y hora</th><th>Sede</th><th>Placa</th><th>Operación</th><th>Conductor</th><th>Pregunta en NO</th><th>Observación</th></tr></thead><tbody>
+   <div class="card"><div class="mh"><b>NO y observaciones por placa</b><small>${NOs.length} formulario${NOs.length===1?'':'s'} con NO u observaciones · fecha y hora en que se diligenció el formulario</small></div>
+    <div class="tw" style="max-height:460px"><table class="mini nog"><thead><tr><th>Fecha y hora</th><th>Sede</th><th>Placa</th><th>Operación</th><th>Conductor</th><th>Preguntas en NO y observaciones</th><th>Observaciones generales</th></tr></thead><tbody>
     ${NOs.map(o=>`<tr><td>${fd(o.x.fecha)}</td><td>${esc(o.x.sede)}</td><td><b>${esc(o.x.placa)}</b></td><td>${o.x.operacion?`<span class="pill ${o.x.operacion==='Salida'?'p-s':'p-r'}">${esc(o.x.operacion)}</span>`:'—'}</td><td>${esc(o.x.conductor)}</td>
-      <td>${o.n?`<span class="cat">${o.cr?'⚠ ':''}${o.c}</span> ${o.n}. ${esc(o.q)}`:'<b>Observaciones generales</b>'}</td><td class="ob">${esc(o.obs)||'—'}</td></tr>`).join('')||'<tr><td colspan="7" class="empty">No hay NO ni observaciones con estos filtros.</td></tr>'}</tbody></table></div></div>`;
+      <td>${o.it.length?`<ul class="nol">${o.it.map(i=>`<li><span class="cat">${i.cr?'⚠ ':''}${i.c}</span> ${i.n}. ${esc(i.q)} <span class="ob">→ ${esc(i.obs)||'—'}</span></li>`).join('')}</ul>`:'<span style="color:var(--mut)">Sin NO</span>'}</td><td class="ob">${esc(o.og)||'—'}</td></tr>`).join('')||'<tr><td colspan="7" class="empty">No hay NO ni observaciones con estos filtros.</td></tr>'}</tbody></table></div></div>`;
   $('fs').onchange=e=>{F.sede=e.target.value;pintar()};$('fo').onchange=e=>{F.oper=e.target.value;pintar()};$('fm').onchange=e=>{F.mes=e.target.value;pintar()};$('fe').onchange=e=>{F.estado=e.target.value;pintar()};
   $('fq').oninput=e=>{F.q=e.target.value;clearTimeout(window.__t);window.__t=setTimeout(()=>{pintar();const i=$('fq');i.focus();i.setSelectionRange(i.value.length,i.value.length)},300)};
   document.querySelectorAll('.opb[data-id]').forEach(b=>b.onclick=()=>detalle(D.find(x=>x.id===b.dataset.id)));
   $('xls').onclick=()=>excel(V);
   $('pls').onchange=e=>{plSede=e.target.value;msgP='';pintar()};
   const gP=async l=>setDoc(doc(db,'config','placas_'+plSede),{placas:l});
-  $('plg').onclick=async()=>{const v=$('pln').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');if(v.length<5){msgP='Escribe una placa válida (ej: TRK494).';return pintar()}
-    if(PL[plSede].includes(v)){msgP=`${v} ya está en ${plSede}.`;return pintar()}try{await gP([...PL[plSede],v].sort());msgP=`✔ ${v} guardada en ${plSede}.`}catch(x){msgP='No se pudo guardar ('+x.code+').'}pintar();setTimeout(()=>{const i=$('pln');if(i)i.focus()},50)};
-  $('pln').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();$('plg').click()}};
+  $('plg').onclick=async()=>{const lst=[...new Set($('pln').value.toUpperCase().split(/[\s,;]+/).map(v=>v.replace(/[^A-Z0-9]/g,'')).filter(Boolean))],ok=lst.filter(v=>v.length>=5&&v.length<=8),mal=lst.filter(v=>!ok.includes(v));
+    if(!ok.length){msgP='Escribe al menos una placa válida (ej: TRK494).';return pintar()}
+    const nuevas=ok.filter(v=>!PL[plSede].includes(v)),tot=[...new Set([...PL[plSede],...nuevas])].sort();
+    if(tot.length>200){msgP=`Máximo 200 placas por sede: ${plSede} quedaría con ${tot.length}. Quita algunas.`;return pintar()}
+    try{await gP(tot);msgP=`✔ ${nuevas.length} placa${nuevas.length===1?'':'s'} agregada${nuevas.length===1?'':'s'} a ${plSede}${ok.length-nuevas.length?` · ${ok.length-nuevas.length} ya existía${ok.length-nuevas.length===1?'':'n'}`:''}${mal.length?` · ${mal.length} no válida${mal.length===1?'':'s'}: ${mal.slice(0,5).join(', ')}`:''}.`}catch(x){msgP='No se pudo guardar ('+x.code+').'}pintar()};
+  const px=$('plx');if(px)px.onclick=async()=>{if(!confirm(`¿Eliminar TODAS las placas de ${plSede} (${PL[plSede].length})?`))return;try{await gP([]);msgP='Placas eliminadas.'}catch(x){msgP='No se pudo eliminar ('+x.code+').'}pintar()};
   document.querySelectorAll('[data-pd]').forEach(b=>b.onclick=async()=>{const v=PL[plSede][+b.dataset.pd];if(!confirm(`¿Eliminar la placa ${v} de ${plSede}?`))return;try{await gP(PL[plSede].filter(x=>x!==v));msgP=`Placa ${v} eliminada.`}catch(x){msgP='No se pudo eliminar ('+x.code+').'}pintar()});Vact=V;
 }
 function detalle(x){if(!x)return;const R=x.respuestas||{},d=$('det');
@@ -135,8 +142,8 @@ function detalle(x){if(!x)return;const R=x.respuestas||{},d=$('det');
   d.showModal();$('dc').onclick=()=>d.close()}
 async function libroXLSX(V){if(!window.XLSX){await new Promise((ok,er)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=ok;s.onerror=er;document.head.appendChild(s)})}
   const PP={};pares(D).forEach(e=>PP[e.dia+'|'+e.sede+'|'+e.placa]=e);
-  const enc=['Fecha','Sede','Operación','Placa','Conductor','Kilometraje','Total SI','Total NO','Críticos en NO','Salida y retorno (día)'];Q.forEach(([c,q],i)=>{enc.push(`${i+1}. ${c} - ${q}`);enc.push(`Obs. ${i+1}`)});enc.push('Observaciones generales');
-  const rows=[enc,...V.map(x=>{const R=x.respuestas||{},e=PP[String(x.fecha||'').slice(0,10)+'|'+x.sede+'|'+x.placa],f=[x.fecha,x.sede,x.operacion||'',x.placa,x.conductor,x.km||'',x.totalSi,x.totalNo,(x.criticosNo||[]).join(' | '),e?(e.pct===100?'100% completo':'50% · falta '+e.falta):''];Q.forEach((q,i)=>{const r=R['q'+String(i+1).padStart(2,'0')]||{};f.push(r.r||'');f.push(r.obs||'')});f.push(x.obsGeneral||'');return f})];
+  const enc=['Fecha','Sede','Operación','Placa','Conductor','Kilometraje','Total SI','Total NO','Críticos en NO','Salida y retorno (día)','Tiempo de diligenciamiento'];Q.forEach(([c,q],i)=>{enc.push(`${i+1}. ${c} - ${q}`);enc.push(`Obs. ${i+1}`)});enc.push('Observaciones generales');
+  const rows=[enc,...V.map(x=>{const R=x.respuestas||{},e=PP[String(x.fecha||'').slice(0,10)+'|'+x.sede+'|'+x.placa],f=[x.fecha,x.sede,x.operacion||'',x.placa,x.conductor,x.km||'',x.totalSi,x.totalNo,(x.criticosNo||[]).join(' | '),e?(e.pct===100?'100% completo':'50% · falta '+e.falta):'',x.duracionSeg!=null?`${Math.floor(x.duracionSeg/60)}:${String(x.duracionSeg%60).padStart(2,'0')}`:''];Q.forEach((q,i)=>{const r=R['q'+String(i+1).padStart(2,'0')]||{};f.push(r.r||'');f.push(r.obs||'')});f.push(x.obsGeneral||'');return f})];
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Checklist');return wb}
 const nombreX=()=>`checklist_preoperacional_${new Date().toISOString().slice(0,10)}.xlsx`;
 async function excel(V){if(!V.length)return alert('No hay reportes para descargar con estos filtros.');
