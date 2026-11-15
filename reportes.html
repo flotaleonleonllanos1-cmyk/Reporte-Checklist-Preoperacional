@@ -40,9 +40,10 @@ table.mini td{white-space:nowrap}table.nog td:nth-child(6),table.nog td:nth-chil
 .camb:hover{filter:brightness(1.08)}.camb.girando{opacity:.6;cursor:wait}
 .card.cap{width:max-content;min-width:100%;padding:22px 24px}
 .card.cap .mh b{font-size:1.35rem}.card.cap .mh small{font-size:1rem}
-.card.cap .mini th,.card.cap .mini td{font-size:15px!important;padding:9px 12px!important;line-height:1.35}
-.card.cap .mini .pill,.card.cap .opb,.card.cap .durb{font-size:13px!important;padding:3px 10px!important}
-.card.cap .tx{font-size:14.5px!important}.card.cap .bar{width:70px;height:9px}.card.cap .nol li{margin:3px 0}
+.card.cap{-webkit-font-smoothing:antialiased;text-rendering:geometricPrecision}.card.cap .mini th,.card.cap .mini td{font-size:17px!important;padding:11px 14px!important;line-height:1.4}
+.cappie{margin-top:10px;font-size:13px;color:var(--mut);text-align:right}
+.card.cap .mini .pill,.card.cap .opb,.card.cap .durb{font-size:15px!important;padding:4px 11px!important}
+.card.cap .tx{font-size:16.5px!important}.card.cap .bar{width:70px;height:9px}.card.cap .nol li{margin:3px 0}
 .card.cap table.nog td:nth-child(6){min-width:420px}.card.cap table.nog td:nth-child(7){min-width:320px}.card.cap .tw.fijo{height:auto!important;max-height:none!important;overflow:visible!important}.card.cap .tw.fijo thead th{position:static}
 .srt{cursor:pointer;user-select:none;white-space:nowrap}.srt:hover{color:var(--ink)}.srt .si{font-size:.7rem;opacity:.55}.srt.on{color:#f2c94c}.srt.on .si{opacity:1}
 .srt .sl{display:block;font-size:.6rem;text-transform:none;letter-spacing:0;color:#f2c94c;font-weight:700}
@@ -215,17 +216,27 @@ async function libroXLSX(V){await cargarXLSX();
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Checklist');return wb}
 const nombreX=()=>`checklist_preoperacional_${new Date().toISOString().slice(0,10)}.xlsx`;
 // 📷 Captura de toda la tabla de Reportes (todas las filas, aunque esté con scroll) y descarga como imagen
-async function captura(btn){if(btn.disabled)return;btn.disabled=true;btn.classList.add('girando');
+// 📷 Captura nítida: la tabla se divide en páginas (imágenes) de pocas filas, con letra grande y resolución x3,
+// para que cada imagen se lea clara al abrirla en el celular o el computador (una imagen muy alta se ve borrosa al reducirla)
+async function captura(btn){if(btn.disabled)return;btn.disabled=true;btn.classList.add('girando');const card=btn.closest('.card');
   try{if(!window.html2canvas)await new Promise((ok,er)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';s.onload=ok;s.onerror=er;document.head.appendChild(s)});
-    const card=btn.closest('.card');card.classList.add('cap');await new Promise(r=>requestAnimationFrame(()=>setTimeout(r,60)));
-    if(document.fonts&&document.fonts.ready)await document.fonts.ready;
-    // escala alta (nítida) sin pasar los límites de tamaño de imagen del navegador
-    const W=card.scrollWidth,H=card.scrollHeight,esc2=Math.max(1.5,Math.min(3,16000/Math.max(W,H),Math.sqrt(1.5e8/(W*H))));
-    const cv=await html2canvas(card,{backgroundColor:'#13201f',scale:esc2,useCORS:true,logging:false,width:W,height:H,windowWidth:Math.max(document.documentElement.clientWidth,card.scrollWidth+40),ignoreElements:el=>!!(el.classList&&el.classList.contains('camb'))});
-    card.classList.remove('cap');
-    const f=[F.sede,F.oper,F.dia||F.mes].filter(Boolean).join('_')||'todos',a=document.createElement('a');a.download=`${btn.dataset.n||'reportes'}_${f}_${new Date().toISOString().slice(0,10)}.png`;a.href=cv.toDataURL('image/png');document.body.appendChild(a);a.click();a.remove()}
-  catch(x){console.error(x);alert('No se pudo generar la imagen.');const c=document.querySelector('.cap');if(c)c.classList.remove('cap')}
-  btn.disabled=false;btn.classList.remove('girando')}
+    card.classList.add('cap');if(document.fonts&&document.fonts.ready)await document.fonts.ready;
+    const filas=[...card.querySelectorAll('.tw.fijo tbody tr')],porPag=card.querySelector('table.nog')?8:16,nPag=Math.max(1,Math.ceil(filas.length/porPag));
+    const pie=document.createElement('div');pie.className='cappie';card.appendChild(pie);
+    const f=[F.sede,F.oper,F.dia||F.mes].filter(Boolean).join('_')||'todos',hoy=new Date().toISOString().slice(0,10);
+    for(let k=0;k<nPag;k++){btn.title=`Generando imagen ${k+1} de ${nPag}…`;
+      filas.forEach((tr,i)=>tr.style.display=(i>=k*porPag&&i<(k+1)*porPag)?'':'none');
+      pie.textContent=`Página ${k+1} de ${nPag} · filas ${k*porPag+1}–${Math.min((k+1)*porPag,filas.length)} de ${filas.length} · generado ${new Date().toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'})}`;
+      await new Promise(r=>requestAnimationFrame(()=>setTimeout(r,80)));
+      const W=card.scrollWidth,H=card.scrollHeight,esc2=Math.min(3,14000/Math.max(W,H));
+      const cv=await html2canvas(card,{backgroundColor:'#13201f',scale:esc2,useCORS:true,logging:false,width:W,height:H,windowWidth:Math.max(document.documentElement.clientWidth,W+40),ignoreElements:el=>!!(el.classList&&el.classList.contains('camb'))});
+      const blob=await new Promise(r=>cv.toBlob(r,'image/png')),a=document.createElement('a');a.href=URL.createObjectURL(blob);
+      a.download=`${btn.dataset.n||'reportes'}_${f}_${hoy}${nPag>1?`_p${String(k+1).padStart(2,'0')}`:''}.png`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+      await new Promise(r=>setTimeout(r,350))}
+    filas.forEach(tr=>tr.style.display='');pie.remove()}
+  catch(x){console.error(x);alert('No se pudo generar la imagen.')}
+  card.querySelectorAll('.tw.fijo tbody tr').forEach(tr=>tr.style.display='');const pz=card.querySelector('.cappie');if(pz)pz.remove();card.classList.remove('cap');
+  btn.title='Descargar imagen de toda la tabla';btn.disabled=false;btn.classList.remove('girando')}
 async function excel(V){if(!V.length)return alert('No hay reportes para descargar con estos filtros.');
   const meses=[...new Set(V.map(x=>String(x.fecha||'').slice(0,7)).filter(Boolean))].sort();
   for(const mm of meses){const Vm=V.filter(x=>String(x.fecha||'').startsWith(mm)),wb=await libroXLSX(Vm),Pm=pares(D.filter(x=>String(x.fecha||'').startsWith(mm)&&(!F.sede||x.sede===F.sede)));
