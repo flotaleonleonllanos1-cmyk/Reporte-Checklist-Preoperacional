@@ -127,7 +127,7 @@ function pintar(nuevos=[]){
     <textarea id="pln" rows="2" placeholder="Escribe o pega de 1 a 200 placas (una por línea, o separadas por coma o espacio)" style="flex:1;min-width:260px;text-transform:uppercase;padding:9px 10px;border-radius:10px;border:1px solid var(--line);background:#0b1514;color:var(--ink);font:inherit"></textarea>
     <button class="btn" id="plg">Guardar placas</button>${PL[plSede].length?'<button class="btn g" id="plx">Eliminar todas</button>':''}<small style="color:var(--mut)">${PL[plSede].length}/200 placas en ${plSede}</small></div>
     <div class="chips">${PL[plSede].map((p,i)=>`<span>${esc(p)}<button data-pd="${i}" title="Eliminar ${esc(p)}">✕</button></span>`).join('')||'<small style="color:var(--mut)">Aún no hay placas para esta sede.</small>'}</div><div class="msgc">${esc(msgP)}</div></div></div>
-  <div class="card"><div class="mh"><b>Programación del día · MOVILIZADORES</b><small>Sube el Excel de cada día: se leen las placas de la columna D de la pestaña «MOVILIZADORES» (últimos 6 caracteres) y se cruzan con el checklist.</small></div>
+  <div class="card"><div class="mh"><b>Programación del día · MOVILIZADORES</b><small>Sube el Excel de cada día: se leen las placas de la columna D de la pestaña «MOVILIZADORES» (últimos 6 caracteres); solo se toman las que están en el listado de placas de la sede.</small></div>
     <div class="fil"><label>Sede<select id="pgs">${['Villavicencio','Yopal'].map(s=>`<option${s===progSede?' selected':''}>${s}</option>`).join('')}</select></label><label>Día<input id="pgd" type="date" value="${progDia}" style="width:auto"></label>
       <button class="btn" id="pgu">⬆ Subir Excel del día</button><input type="file" id="pgf" accept=".xlsx,.xls,.xlsm" hidden>
       ${(()=>{const pg=PROG[progDia+'_'+progSede];return pg?`<small style="color:var(--mut)">✔ ${pg.placas.length} placas · ${esc(pg.archivo||'')} · subido por ${esc(pg.por||'')}</small><button class="btn g" id="pgx">Quitar</button>`:'<small style="color:var(--mut)">Sin programación para este día.</small>'})()}</div>
@@ -171,8 +171,12 @@ function pintar(nuevos=[]){
       if(!hn)throw new Error('No se encontró la pestaña «MOVILIZADORES». Pestañas: '+wb.SheetNames.join(', '));
       const rows=XLSX.utils.sheet_to_json(wb.Sheets[hn],{header:1,raw:false,defval:''}),pls=[...new Set(rows.map(r=>String(r[3]||'').toUpperCase().replace(/[^A-Z0-9]/g,'')).filter(v=>v.length>=6).map(v=>v.slice(-6)).filter(v=>/^[A-Z]{3}[0-9]{3}$|^[A-Z]{3}[0-9]{2}[A-Z]$/.test(v)))].sort();
       if(!pls.length)throw new Error('La columna D de «MOVILIZADORES» no tiene placas válidas.');
+      // solo las placas registradas en «Placas del formulario» de la sede elegida
+      const reg=new Set(PL[progSede]||[]);if(!reg.size)throw new Error(`Primero registra las placas de ${progSede} en «Placas del formulario».`);
+      const fuera=pls.filter(v=>!reg.has(v));pls.splice(0,pls.length,...pls.filter(v=>reg.has(v)));
+      if(!pls.length)throw new Error(`Ninguna placa del Excel está en el listado de ${progSede} (${fuera.length} ignoradas).`);
       await setDoc(doc(db,'programacion',progDia+'_'+progSede),{dia:progDia,sede:progSede,placas:pls,archivo:f.name,por:auth.currentUser?.email||'',subido:new Date().toISOString()});
-      msgG=`✔ ${pls.length} placas cargadas para ${progSede} el ${progDia.split('-').reverse().join('/')}.`;F.dia=progDia;F.mes=progDia.slice(0,7);F.sede=progSede}
+      msgG=`✔ ${pls.length} placas cargadas para ${progSede} el ${progDia.split('-').reverse().join('/')}${fuera.length?` · ${fuera.length} placa${fuera.length===1?'':'s'} del Excel no está${fuera.length===1?'':'n'} en el listado y no se tom${fuera.length===1?'ó':'aron'}`:''}.`;F.dia=progDia;F.mes=progDia.slice(0,7);F.sede=progSede}
     catch(x){console.error(x);msgG='No se pudo cargar: '+(x.message||x)}pintar()};
   const pgx=$('pgx');if(pgx)pgx.onclick=async()=>{if(!confirm('¿Quitar la programación de este día?'))return;try{await setDoc(doc(db,'programacion',progDia+'_'+progSede),{dia:progDia,sede:progSede,placas:[]});msgG='Programación quitada.'}catch(x){msgG='No se pudo quitar ('+x.code+').'}pintar()};
   document.querySelectorAll('th.srt').forEach(th=>th.onclick=()=>{const o=th.dataset.o==='r'?ordR:ordN,k=th.dataset.k;if(o.k!==k){o.k=k;o.d=1}else if(o.d===1)o.d=-1;else{o.k='';o.d=1}
