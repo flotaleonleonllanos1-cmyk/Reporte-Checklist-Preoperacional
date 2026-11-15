@@ -36,6 +36,18 @@ dialog::backdrop{background:rgba(0,0,0,.6)}.dh{padding:14px 16px;border-bottom:1
 .tw.fijo thead th{position:sticky;top:0;z-index:1;background:var(--card)}
 table.mini td{white-space:nowrap}table.nog td:nth-child(6),table.nog td:nth-child(7){white-space:normal}
 .tx{font-size:.72rem!important;font-weight:600;letter-spacing:.01em;text-transform:uppercase}
+.repc{position:relative}.camb{position:absolute;top:12px;right:12px;width:40px;height:40px;border-radius:12px;border:1px solid rgba(242,201,76,.6);background:linear-gradient(180deg,#f2c94c,#d4a017 55%,#b8860b);color:#111;display:grid;place-items:center;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,.35)}
+.camb:hover{filter:brightness(1.08)}.camb.girando{opacity:.6;cursor:wait}
+.card.cap{width:max-content;min-width:100%;padding:22px 24px}
+.card.cap .mh b{font-size:1.35rem}.card.cap .mh small{font-size:1rem}
+.card.cap .mini th,.card.cap .mini td{font-size:15px!important;padding:9px 12px!important;line-height:1.35}
+.card.cap .mini .pill,.card.cap .opb,.card.cap .durb{font-size:13px!important;padding:3px 10px!important}
+.card.cap .tx{font-size:14.5px!important}.card.cap .bar{width:70px;height:9px}.card.cap .nol li{margin:3px 0}
+.card.cap table.nog td:nth-child(6){min-width:420px}.card.cap table.nog td:nth-child(7){min-width:320px}.card.cap .tw.fijo{height:auto!important;max-height:none!important;overflow:visible!important}.card.cap .tw.fijo thead th{position:static}
+.srt{cursor:pointer;user-select:none;white-space:nowrap}.srt:hover{color:var(--ink)}.srt .si{font-size:.7rem;opacity:.55}.srt.on{color:#f2c94c}.srt.on .si{opacity:1}
+.srt .sl{display:block;font-size:.6rem;text-transform:none;letter-spacing:0;color:#f2c94c;font-weight:700}
+.card.cap .srt .si,.card.cap .srt .sl{display:none}
+.prg{font-size:.7rem}
 .opc{display:inline-flex;align-items:center;gap:3px;vertical-align:middle;margin-right:4px}.durb{font-size:.62rem;font-weight:800;border-radius:999px;padding:0 7px}.durb.p-s{background:rgba(94,200,242,.12);color:#7fd3f5}.durb.p-r{background:rgba(155,225,93,.12);color:#b8ec84}.durb.p-ok{background:rgba(30,217,176,.12);color:var(--ok)}
 .nol{margin:0;padding-left:14px}.nol li{margin:1px 0}.nog td{vertical-align:top}
 .opb{display:inline-flex;gap:4px;align-items:center;border:0;border-radius:999px;padding:2px 8px;font:inherit;font-size:.68rem;cursor:pointer;margin:1px 0}.opb.p-s{background:rgba(94,200,242,.18);color:#7fd3f5}.opb.p-r{background:rgba(155,225,93,.18);color:#b8ec84}.opb.p-ok{background:rgba(30,217,176,.18);color:var(--ok)}.opb.vac{background:rgba(240,112,112,.12);color:var(--bad);cursor:default}.opb:not(.vac):hover{filter:brightness(1.25)}
@@ -68,7 +80,7 @@ const Q=[['DOC','¿Cuenta con documentación vigente, física o digital?',1],['S
  ['ETI','¿Cuenta con todas las etiquetas de seguridad y señalización completas y visibles?',0],['CARRET','¿Carretillas o diablos se encuentran completos?',0],['CARRET','¿Carretillas o diablos se encuentran funcionales?',0]];
 const $=id=>document.getElementById(id),esc=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const MES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-let plVer=false,PL={Villavicencio:[],Yopal:[]},plSede='Villavicencio',msgP='',D=[],vistos=null,F={sede:'',oper:'',mes:'',estado:'',q:''},unsub=null,correos=[],urlExcel='',msgC='',Vact=[];
+let PROG={},progSede='Villavicencio',progDia=new Date(Date.now()-5*3600e3).toISOString().slice(0,10),msgG='',ordR={k:'',d:1},ordN={k:'',d:1},plVer=false,PL={Villavicencio:[],Yopal:[]},plSede='Villavicencio',msgP='',D=[],vistos=null,F={sede:'',oper:'',mes:'',dia:'',estado:'',q:''},unsub=null,correos=[],urlExcel='',msgC='',Vact=[];
 const fd=f=>{const[a,b]=String(f||'').split(' ');if(!a)return'—';const[y,m,d]=a.split('-');return `${d}/${m}/${y} ${(b||'').slice(0,5)}`};
 function login(msg=''){$('usr').innerHTML='';$('app').innerHTML=`<div class="card login"><h2 style="margin:0">Ingresar</h2><p style="color:var(--mut);margin:6px 0 0">Para revisar los reportes del checklist.</p>
   <form id="lf"><label>Correo<input id="em" type="email" required autocomplete="username"></label><label>Contraseña<input id="pw" type="password" required autocomplete="current-password"></label>
@@ -77,6 +89,7 @@ function login(msg=''){$('usr').innerHTML='';$('app').innerHTML=`<div class="car
 onAuthStateChanged(auth,u=>{if(unsub){unsub();unsub=null}if(!u){login();return}
   $('usr').innerHTML=`<span class="live">En vivo</span> <small style="color:var(--mut);margin:0 8px">${esc(u.email)}</small><button class="btn g" id="out">Salir</button>`;$('out').onclick=()=>signOut(auth);
   $('app').innerHTML='<p class="empty">Cargando reportes…</p>';
+  onSnapshot(collection(db,'programacion'),s=>{PROG={};s.docs.forEach(d=>PROG[d.id]=d.data());if(vistos)pintar()},()=>{});
   ['Villavicencio','Yopal'].forEach(s=>onSnapshot(doc(db,'config','placas_'+s),d=>{PL[s]=d.exists()?(d.data().placas||[]):[];if(vistos)pintar()},()=>{}));
   unsub=onSnapshot(query(collection(db,'checklists'),orderBy('creado','desc'),limit(2000)),snap=>{const nuevos=vistos?snap.docs.filter(d=>!vistos.has(d.id)).map(d=>d.id):[];
     vistos=new Set(snap.docs.map(d=>d.id));D=snap.docs.map(d=>({id:d.id,...d.data({serverTimestamps:'estimate'})}));pintar(nuevos)},
@@ -85,16 +98,28 @@ onAuthStateChanged(auth,u=>{if(unsub){unsub();unsub=null}if(!u){login();return}
 function pares(L){const m={};L.filter(x=>x.operacion).forEach(x=>{const dia=String(x.fecha||'').slice(0,10),k=dia+'|'+x.sede+'|'+x.placa;const e=m[k]=m[k]||{dia,sede:x.sede,placa:x.placa,sal:0,ret:0,cond:new Set()};
   if(x.operacion==='Salida')e.sal++;else if(x.operacion==='Retorno')e.ret++;e.cond.add(x.conductor)});
   return Object.values(m).map(e=>({...e,pct:e.sal&&e.ret?100:50,falta:e.sal&&!e.ret?'Retorno':!e.sal&&e.ret?'Salida':''})).sort((a,b)=>b.dia.localeCompare(a.dia)||a.placa.localeCompare(b.placa))}
+// Orden por columna: clic en el título → A-Z / menor-mayor, otro clic → Z-A / mayor-menor, otro clic → orden original
+const thO=(t,k,lab,num)=>{const o=t==='r'?ordR:ordN,on=o.k===k,ic=on?(o.d>0?'▲':'▼'):'⇅',tip=on?(o.d>0?(num?'Menor → Mayor':'A → Z'):(num?'Mayor → Menor':'Z → A')):(num?'Ordenar de menor a mayor':'Ordenar de A a Z');
+  return `<th class="srt${on?' on':''}" data-o="${t}" data-k="${k}" title="${tip}">${lab} <span class="si">${ic}</span>${on?`<small class="sl">${tip}</small>`:''}</th>`};
+const cmpV=(a,b)=>typeof a==='number'&&typeof b==='number'?a-b:String(a??'').localeCompare(String(b??''),'es',{numeric:true,sensitivity:'base'});
+const ordenar=(L,o,get)=>{if(!o.k)return L;return L.slice().sort((a,b)=>{const x=get(a,o.k),y=get(b,o.k);const vx=x===''||x==null,vy=y===''||y==null;if(vx!==vy)return vx?1:-1;return cmpV(x,y)*o.d})};
 function pintar(nuevos=[]){
   const meses=[...new Set(D.map(x=>String(x.fecha||'').slice(0,7)).filter(Boolean))].sort().reverse();
-  const q=F.q.trim().toLowerCase(),V=D.filter(x=>(!F.sede||x.sede===F.sede)&&(!F.oper||x.operacion===F.oper)&&(!F.mes||String(x.fecha||'').startsWith(F.mes))
+  const q=F.q.trim().toLowerCase(),V=D.filter(x=>(!F.sede||x.sede===F.sede)&&(!F.oper||x.operacion===F.oper)&&(!F.mes||String(x.fecha||'').startsWith(F.mes))&&(!F.dia||String(x.fecha||'').startsWith(F.dia))
     &&(!F.estado||(F.estado==='no'?x.totalNo>0:F.estado==='cr'?(x.criticosNo||[]).length>0:x.totalNo===0))&&(!q||`${x.placa} ${x.conductor}`.toLowerCase().includes(q)));
-  const base=D.filter(x=>(!F.sede||x.sede===F.sede)&&(!F.mes||String(x.fecha||'').startsWith(F.mes))&&(!q||`${x.placa} ${x.conductor}`.toLowerCase().includes(q))),P=pares(base),PM={};P.forEach(e=>PM[e.dia+'|'+e.sede+'|'+e.placa]=e);
+  const base=D.filter(x=>(!F.sede||x.sede===F.sede)&&(!F.mes||String(x.fecha||'').startsWith(F.mes))&&(!F.dia||String(x.fecha||'').startsWith(F.dia))&&(!q||`${x.placa} ${x.conductor}`.toLowerCase().includes(q))),P=pares(base),PM={};P.forEach(e=>PM[e.dia+'|'+e.sede+'|'+e.placa]=e);
   const GM={},G=[];V.forEach(x=>{const dia=String(x.fecha||'').slice(0,10);if(!x.operacion){G.push({dia,sede:x.sede,placa:x.placa,sinOp:x,ord:x.fecha});return}
     const k=dia+'|'+x.sede+'|'+x.placa;let g=GM[k];if(!g){g=GM[k]={dia,sede:x.sede,placa:x.placa,sal:null,ret:null,ord:''};G.push(g)}
     if(x.operacion==='Salida'){if(!g.sal||x.fecha>g.sal.fecha)g.sal=x}else if(x.operacion==='Retorno'){if(!g.ret||x.fecha>g.ret.fecha)g.ret=x}if(x.fecha>g.ord)g.ord=x.fecha});
-  G.forEach(g=>{if(g.sinOp)return;const e=PM[g.dia+'|'+g.sede+'|'+g.placa]||{pct:g.sal&&g.ret?100:50,falta:g.sal&&!g.ret?'Retorno':!g.sal?'Salida':''};g.pct=e.pct;g.falta=e.falta});
+  // Programación del día (Excel MOVILIZADORES): las placas programadas sin checklist también aparecen (0 %)
+  const progs=Object.values(PROG).filter(pg=>(!F.sede||pg.sede===F.sede)&&(!F.mes||String(pg.dia).startsWith(F.mes))&&(!F.dia||pg.dia===F.dia));
+  progs.forEach(pg=>(pg.placas||[]).forEach(pl=>{if(q&&!pl.toLowerCase().includes(q))return;const k=pg.dia+'|'+pg.sede+'|'+pl;if(GM[k]){GM[k].prog=true;return}if(F.oper||F.estado)return;
+    const g=GM[k]={dia:pg.dia,sede:pg.sede,placa:pl,sal:null,ret:null,ord:pg.dia+' 00:00:00',prog:true,sinChk:true};G.push(g)}));
+  G.forEach(g=>{if(g.sinChk){g.pct=0;g.falta='Salida y Retorno';return}if(g.sinOp)return;const e=PM[g.dia+'|'+g.sede+'|'+g.placa]||{pct:g.sal&&g.ret?100:50,falta:g.sal&&!g.ret?'Retorno':!g.sal?'Salida':''};g.pct=e.pct;g.falta=e.falta});
   G.sort((a,b)=>String(b.ord).localeCompare(String(a.ord)));
+  const gL=g=>[g.sal,g.ret,g.sinOp].filter(Boolean),gDur=g=>{const d=gL(g).filter(x=>x.duracionSeg!=null).map(x=>x.duracionSeg);return d.length?d.reduce((a,b)=>a+b,0)/d.length:''};
+  const Gs=ordenar(G,ordR,(g,k)=>k==='fecha'?String(g.ord||''):k==='sede'?g.sede:k==='placa'?g.placa:k==='oper'?(g.sinOp?'Checklist':[g.sal&&'Salida',g.ret&&'Retorno'].filter(Boolean).join(' ')):k==='cond'?gL(g).map(x=>String(x.conductor||'').toUpperCase()).join(' / '):
+    k==='km'?(Number((g.sal||g.ret||g.sinOp||{}).km)||''):k==='res'?gL(g).reduce((a,x)=>a+(x.totalNo||0),0):k==='crit'?gL(g).reduce((a,x)=>a+((x.criticosNo||[]).length),0):k==='cump'?(g.sinOp?'':g.pct):k==='tp'?gDur(g):'');
   const conNo=V.filter(x=>x.totalNo>0).length,cr=V.filter(x=>(x.criticosNo||[]).length).length,hoy=new Date().toISOString().slice(0,10);
   const NOs=[];V.forEach(x=>{const R=x.respuestas||{},it=[];Q.forEach(([c,qq,cr],i)=>{const r=R['q'+String(i+1).padStart(2,'0')]||{};if(r.r==='NO')it.push({n:i+1,c,q:qq,cr,obs:r.obs||''})});if(it.length||x.obsGeneral)NOs.push({x,it,og:x.obsGeneral||''})});
   $('app').innerHTML=`<div class="card"><div class="mh plh"><div><b>Placas del formulario</b><small>Las placas que guardes aquí aparecen automáticamente en el formulario para la sede elegida.</small></div><button class="btn g" id="plt">${plVer?'▲ Ocultar placas':`▼ Mostrar placas (${PL.Villavicencio.length+PL.Yopal.length})`}</button></div><div class="plbody"${plVer?'':' hidden'}>
@@ -102,36 +127,57 @@ function pintar(nuevos=[]){
     <textarea id="pln" rows="2" placeholder="Escribe o pega de 1 a 200 placas (una por línea, o separadas por coma o espacio)" style="flex:1;min-width:260px;text-transform:uppercase;padding:9px 10px;border-radius:10px;border:1px solid var(--line);background:#0b1514;color:var(--ink);font:inherit"></textarea>
     <button class="btn" id="plg">Guardar placas</button>${PL[plSede].length?'<button class="btn g" id="plx">Eliminar todas</button>':''}<small style="color:var(--mut)">${PL[plSede].length}/200 placas en ${plSede}</small></div>
     <div class="chips">${PL[plSede].map((p,i)=>`<span>${esc(p)}<button data-pd="${i}" title="Eliminar ${esc(p)}">✕</button></span>`).join('')||'<small style="color:var(--mut)">Aún no hay placas para esta sede.</small>'}</div><div class="msgc">${esc(msgP)}</div></div></div>
+  <div class="card"><div class="mh"><b>Programación del día · MOVILIZADORES</b><small>Sube el Excel de cada día: se leen las placas de la columna D de la pestaña «MOVILIZADORES» (últimos 6 caracteres) y se cruzan con el checklist.</small></div>
+    <div class="fil"><label>Sede<select id="pgs">${['Villavicencio','Yopal'].map(s=>`<option${s===progSede?' selected':''}>${s}</option>`).join('')}</select></label><label>Día<input id="pgd" type="date" value="${progDia}" style="width:auto"></label>
+      <button class="btn" id="pgu">⬆ Subir Excel del día</button><input type="file" id="pgf" accept=".xlsx,.xls,.xlsm" hidden>
+      ${(()=>{const pg=PROG[progDia+'_'+progSede];return pg?`<small style="color:var(--mut)">✔ ${pg.placas.length} placas · ${esc(pg.archivo||'')} · subido por ${esc(pg.por||'')}</small><button class="btn g" id="pgx">Quitar</button>`:'<small style="color:var(--mut)">Sin programación para este día.</small>'})()}</div>
+    <div class="msgc">${esc(msgG)}</div></div>
   <div class="card"><div class="fil">
     <label>Sede<select id="fs"><option value="">Todas</option>${['Villavicencio','Yopal'].map(s=>`<option${s===F.sede?' selected':''}>${s}</option>`).join('')}</select></label>
     <label>Operación<select id="fo"><option value="">Todas</option>${['Salida','Retorno'].map(s=>`<option${s===F.oper?' selected':''}>${s}</option>`).join('')}</select></label>
     <label>Mes<select id="fm"><option value="">Todos</option>${meses.map(k=>`<option value="${k}"${k===F.mes?' selected':''}>${MES[+k.slice(5)-1]} ${k.slice(0,4)}</option>`).join('')}</select></label>
+    <label>Fecha<input id="fdia" type="date" value="${F.dia}" style="width:auto">${F.dia?'<button class="btn g" id="fdx" title="Quitar fecha" style="padding:6px 10px">✕</button>':''}</label>
     <label>Estado<select id="fe"><option value="">Todos</option><option value="ok"${F.estado==='ok'?' selected':''}>Sin NO</option><option value="no"${F.estado==='no'?' selected':''}>Con NO</option><option value="cr"${F.estado==='cr'?' selected':''}>Con críticos en NO</option></select></label>
     <input id="fq" type="search" placeholder="Buscar placa o conductor…" value="${esc(F.q)}" style="flex:1;min-width:180px">
     <button class="btn" id="xls" title="Descarga un Excel por cada mes">⬇ Excel por mes</button></div></div>
    <div class="kpis"><div class="kpi"><b>${V.length}</b><span>Checklists</span></div><div class="kpi"><b>${V.filter(x=>String(x.fecha).startsWith(hoy)).length}</b><span>Enviados hoy</span></div>
     <div class="kpi ok"><b>${V.length-conNo}</b><span>Sin ningún NO</span></div><div class="kpi bad"><b>${conNo}</b><span>Con algún NO</span></div><div class="kpi bad"><b>${cr}</b><span>Con ítems críticos en NO</span></div></div>
-   <div class="card"><div class="mh"><b>Reportes</b><small>Cumplimiento salida y retorno: <b style="color:${P.length&&P.every(e=>e.pct===100)?'var(--ok)':'var(--bad)'}">${P.length?Math.round(P.filter(e=>e.pct===100).length/P.length*100):0}%</b> · cada placa debe hacer Salida y Retorno el mismo día${(()=>{const ds=V.filter(x=>x.duracionSeg!=null).map(x=>x.duracionSeg);if(!ds.length)return '';const m=Math.round(ds.reduce((a,b)=>a+b,0)/ds.length);return ` · Tiempo promedio de diligenciamiento: <b class="tprom">⏱ ${Math.floor(m/60)}:${String(m%60).padStart(2,'0')}</b>`})()}</small></div>
-   <div class="tw fijo"><table class="mini"><thead><tr><th>Fecha</th><th>Sede</th><th>Placa</th><th>Operación</th><th>Conductor(es)</th><th>Km</th><th>Resultado</th><th>Críticos</th><th>Cumplimiento salida y retorno</th><th>Tiem. Prom.</th></tr></thead><tbody>
-   ${G.map(g=>{const dT=x=>x&&x.duracionSeg!=null?`<span class="durb ${x.operacion==='Retorno'?'p-r':x.operacion==='Salida'?'p-s':'p-ok'}">⏱ ${Math.floor(x.duracionSeg/60)}:${String(x.duracionSeg%60).padStart(2,'0')}</span>`:'';
+   <div class="card repc"><button class="camb" id="cam" data-n="reportes_checklist" title="Descargar imagen de toda la tabla" aria-label="Captura de la tabla"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 8h3l2-2.5h6L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="13.5" r="3.6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button><div class="mh"><b>Reportes</b><small>Cumplimiento salida y retorno: ${(()=>{const L=progs.length?G.filter(g=>g.prog):G.filter(g=>!g.sinOp),ok=L.filter(g=>g.pct===100).length,pc=L.length?Math.round(ok/L.length*100):0;
+      return `<b style="color:${pc===100?'var(--ok)':'var(--bad)'}">${pc}%</b>${progs.length?` (${ok} de ${L.length} placas programadas · <b style="color:var(--bad)">${G.filter(g=>g.sinChk).length} sin checklist</b>)`:''}`})()} · cada placa debe hacer Salida y Retorno el mismo día${(()=>{const ds=V.filter(x=>x.duracionSeg!=null).map(x=>x.duracionSeg);if(!ds.length)return '';const m=Math.round(ds.reduce((a,b)=>a+b,0)/ds.length);return ` · Tiempo promedio de diligenciamiento: <b class="tprom">⏱ ${Math.floor(m/60)}:${String(m%60).padStart(2,'0')}</b>`})()}</small></div>
+   <div class="tw fijo"><table class="mini"><thead><tr>${thO('r','fecha','Fecha',1)}${thO('r','sede','Sede')}${thO('r','placa','Placa')}${thO('r','oper','Operación')}${thO('r','cond','Conductor(es)')}${thO('r','km','Km',1)}${thO('r','res','Resultado',1)}${thO('r','crit','Críticos',1)}${thO('r','cump','Cumplimiento salida y retorno',1)}${thO('r','tp','Tiem. Prom.',1)}</tr></thead><tbody>
+   ${Gs.map(g=>{const dT=x=>x&&x.duracionSeg!=null?`<span class="durb ${x.operacion==='Retorno'?'p-r':x.operacion==='Salida'?'p-s':'p-ok'}">⏱ ${Math.floor(x.duracionSeg/60)}:${String(x.duracionSeg%60).padStart(2,'0')}</span>`:'';
      const S=g.sal,Rt=g.ret,op=(x,l,cl)=>x?`<span class="opc"><button class="opb ${cl}" data-id="${x.id}" title="Ver checklist de ${l}"><b>${l}</b> ${fd(x.fecha).slice(11)}</button>${dT(x)}</span>`:`<span class="opc"><span class="opb vac">${l} —</span></span>`;
-     const L=[S,Rt].filter(Boolean),no=L.reduce((a,x)=>a+(x.totalNo||0),0),cr=L.reduce((a,x)=>a+((x.criticosNo||[]).length),0),c=g.pct===100?'var(--ok)':'var(--bad)';
-     return `<tr class="${L.some(x=>nuevos.includes(x.id))?'nuevo':''}"><td>${fd(g.dia).slice(0,10)}</td><td>${esc(g.sede)}</td><td><b>${esc(g.placa)}</b></td>
+     const L=[S,Rt].filter(Boolean),no0=0,no=L.reduce((a,x)=>a+(x.totalNo||0),0),cr=L.reduce((a,x)=>a+((x.criticosNo||[]).length),0),c=g.pct===100?'var(--ok)':'var(--bad)';
+     return `<tr class="${L.some(x=>nuevos.includes(x.id))?'nuevo':''}"><td>${fd(g.dia).slice(0,10)}</td><td>${esc(g.sede)}</td><td><b>${esc(g.placa)}</b>${g.prog?' <span class="prg" title="Programada en MOVILIZADORES">📋</span>':''}</td>
       <td>${g.sinOp?op(g.sinOp,'Checklist','p-ok'):op(S,'Salida','p-s')+' '+op(Rt,'Retorno','p-r')}</td><td class="tx">${esc([...new Set(L.concat(g.sinOp?[g.sinOp]:[]).map(x=>String(x.conductor||'').toUpperCase()))].join(' / '))}</td>
-      <td>${S||Rt?`${esc(S?S.km||'—':'—')} → ${esc(Rt?Rt.km||'—':'—')}`:esc(g.sinOp.km||'—')}</td>
-      <td>${g.sinOp?(g.sinOp.totalNo?`<span class="pill p-no">${g.sinOp.totalNo} NO</span>`:'<span class="pill p-ok">Todo SI</span>'):no?`<span class="pill p-no">${no} NO</span>`:'<span class="pill p-ok">Todo SI</span>'}</td>
-      <td>${(g.sinOp?(g.sinOp.criticosNo||[]).length:cr)?`<span class="pill p-cr">⚠ ${g.sinOp?(g.sinOp.criticosNo||[]).length:cr}</span>`:''}</td>
+      <td>${g.sinChk?'—':S||Rt?`${esc(S?S.km||'—':'—')} → ${esc(Rt?Rt.km||'—':'—')}`:esc(g.sinOp.km||'—')}</td>
+      <td>${g.sinChk?'<span class="pill p-no">Sin checklist</span>':g.sinOp?(g.sinOp.totalNo?`<span class="pill p-no">${g.sinOp.totalNo} NO</span>`:'<span class="pill p-ok">Todo SI</span>'):no?`<span class="pill p-no">${no} NO</span>`:'<span class="pill p-ok">Todo SI</span>'}</td>
+      <td>${!g.sinChk&&(g.sinOp?(g.sinOp.criticosNo||[]).length:cr)?`<span class="pill p-cr">⚠ ${g.sinOp?(g.sinOp.criticosNo||[]).length:cr}</span>`:''}</td>
       <td>${g.sinOp?'<span style="color:var(--mut)">—</span>':`<div class="bar"><i style="width:${g.pct}%;background:${c}"></i></div><b style="color:${c}">${g.pct}%${g.falta?' · falta '+g.falta:''}</b>`}</td>
       <td>${(()=>{const ds=(g.sinOp?[g.sinOp]:[S,Rt]).filter(x=>x&&x.duracionSeg!=null).map(x=>x.duracionSeg);if(!ds.length)return '<span style="color:var(--mut)">—</span>';const m=Math.round(ds.reduce((a,b)=>a+b,0)/ds.length);
         return `<b class="tprom" title="Promedio de ${ds.length} formulario${ds.length===1?'':'s'}">⏱ ${Math.floor(m/60)}:${String(m%60).padStart(2,'0')}</b>`})()}</td></tr>`}).join('')||'<tr><td colspan="10" class="empty">No hay reportes con estos filtros.</td></tr>'}</tbody></table></div></div>
-   <div class="card"><div class="mh"><b>NO y observaciones por placa</b><small>${NOs.length} formulario${NOs.length===1?'':'s'} con NO u observaciones · fecha y hora en que se diligenció el formulario</small></div>
-    <div class="tw fijo"><table class="mini nog"><thead><tr><th>Fecha y hora</th><th>Sede</th><th>Placa</th><th>Operación</th><th>Conductor</th><th>Preguntas en NO y observaciones</th><th>Observaciones generales</th></tr></thead><tbody>
-    ${NOs.map(o=>`<tr><td>${fd(o.x.fecha)}</td><td>${esc(o.x.sede)}</td><td><b>${esc(o.x.placa)}</b></td><td>${o.x.operacion?`<span class="pill ${o.x.operacion==='Salida'?'p-s':'p-r'}">${esc(o.x.operacion)}</span>`:'—'}</td><td class="tx">${esc(String(o.x.conductor||'').toUpperCase())}</td>
+   <div class="card repc"><button class="camb" id="cam2" data-n="no_y_observaciones" title="Descargar imagen de toda la tabla" aria-label="Captura de NO y observaciones"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 8h3l2-2.5h6L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="13.5" r="3.6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button><div class="mh"><b>NO y observaciones por placa</b><small>${NOs.length} formulario${NOs.length===1?'':'s'} con NO u observaciones · fecha y hora en que se diligenció el formulario</small></div>
+    <div class="tw fijo"><table class="mini nog"><thead><tr>${thO('n','fecha','Fecha y hora',1)}${thO('n','sede','Sede')}${thO('n','placa','Placa')}${thO('n','oper','Operación')}${thO('n','cond','Conductor')}${thO('n','nno','Preguntas en NO y observaciones',1)}${thO('n','og','Observaciones generales')}</tr></thead><tbody>
+    ${ordenar(NOs,ordN,(o,k)=>k==='fecha'?String(o.x.fecha||''):k==='sede'?o.x.sede:k==='placa'?o.x.placa:k==='oper'?(o.x.operacion||''):k==='cond'?String(o.x.conductor||'').toUpperCase():k==='nno'?o.it.length:k==='og'?String(o.og||'').toUpperCase():'').map(o=>`<tr><td>${fd(o.x.fecha)}</td><td>${esc(o.x.sede)}</td><td><b>${esc(o.x.placa)}</b></td><td>${o.x.operacion?`<span class="pill ${o.x.operacion==='Salida'?'p-s':'p-r'}">${esc(o.x.operacion)}</span>`:'—'}</td><td class="tx">${esc(String(o.x.conductor||'').toUpperCase())}</td>
       <td>${o.it.length?`<ul class="nol">${o.it.map(i=>`<li><span class="cat">${i.cr?'⚠ ':''}${i.c}</span> ${i.n}. ${esc(i.q)} <span class="ob tx">→ ${esc(String(i.obs||'').toUpperCase())||'—'}</span></li>`).join('')}</ul>`:'<span style="color:var(--mut)">Sin NO</span>'}</td><td class="ob tx">${esc(String(o.og||'').toUpperCase())||'—'}</td></tr>`).join('')||'<tr><td colspan="7" class="empty">No hay NO ni observaciones con estos filtros.</td></tr>'}</tbody></table></div></div>`;
-  $('fs').onchange=e=>{F.sede=e.target.value;pintar()};$('fo').onchange=e=>{F.oper=e.target.value;pintar()};$('fm').onchange=e=>{F.mes=e.target.value;pintar()};$('fe').onchange=e=>{F.estado=e.target.value;pintar()};
+  $('fs').onchange=e=>{F.sede=e.target.value;pintar()};$('fo').onchange=e=>{F.oper=e.target.value;pintar()};$('fm').onchange=e=>{F.mes=e.target.value;if(F.mes&&F.dia&&!F.dia.startsWith(F.mes))F.dia='';pintar()};$('fdia').onchange=e=>{F.dia=e.target.value;if(F.dia)F.mes=F.dia.slice(0,7);pintar()};const fdx=$('fdx');if(fdx)fdx.onclick=()=>{F.dia='';pintar()};$('fe').onchange=e=>{F.estado=e.target.value;pintar()};
   $('fq').oninput=e=>{F.q=e.target.value;clearTimeout(window.__t);window.__t=setTimeout(()=>{pintar();const i=$('fq');i.focus();i.setSelectionRange(i.value.length,i.value.length)},300)};
   document.querySelectorAll('.opb[data-id]').forEach(b=>b.onclick=()=>detalle(D.find(x=>x.id===b.dataset.id)));
   $('xls').onclick=()=>excel(V);
+  $('pgs').onchange=e=>{progSede=e.target.value;msgG='';pintar()};$('pgd').onchange=e=>{progDia=e.target.value;msgG='';pintar()};
+  $('pgu').onclick=()=>$('pgf').click();
+  $('pgf').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;if(!progDia){msgG='Elige el día.';return pintar()}msgG='Leyendo el Excel…';pintar();
+    try{await cargarXLSX();const wb=XLSX.read(await f.arrayBuffer(),{type:'array'}),hn=wb.SheetNames.find(n=>/moviliz/i.test(n.normalize('NFD').replace(/[\u0300-\u036f]/g,'')));
+      if(!hn)throw new Error('No se encontró la pestaña «MOVILIZADORES». Pestañas: '+wb.SheetNames.join(', '));
+      const rows=XLSX.utils.sheet_to_json(wb.Sheets[hn],{header:1,raw:false,defval:''}),pls=[...new Set(rows.map(r=>String(r[3]||'').toUpperCase().replace(/[^A-Z0-9]/g,'')).filter(v=>v.length>=6).map(v=>v.slice(-6)).filter(v=>/^[A-Z]{3}[0-9]{3}$|^[A-Z]{3}[0-9]{2}[A-Z]$/.test(v)))].sort();
+      if(!pls.length)throw new Error('La columna D de «MOVILIZADORES» no tiene placas válidas.');
+      await setDoc(doc(db,'programacion',progDia+'_'+progSede),{dia:progDia,sede:progSede,placas:pls,archivo:f.name,por:auth.currentUser?.email||'',subido:new Date().toISOString()});
+      msgG=`✔ ${pls.length} placas cargadas para ${progSede} el ${progDia.split('-').reverse().join('/')}.`;F.dia=progDia;F.mes=progDia.slice(0,7);F.sede=progSede}
+    catch(x){console.error(x);msgG='No se pudo cargar: '+(x.message||x)}pintar()};
+  const pgx=$('pgx');if(pgx)pgx.onclick=async()=>{if(!confirm('¿Quitar la programación de este día?'))return;try{await setDoc(doc(db,'programacion',progDia+'_'+progSede),{dia:progDia,sede:progSede,placas:[]});msgG='Programación quitada.'}catch(x){msgG='No se pudo quitar ('+x.code+').'}pintar()};
+  document.querySelectorAll('th.srt').forEach(th=>th.onclick=()=>{const o=th.dataset.o==='r'?ordR:ordN,k=th.dataset.k;if(o.k!==k){o.k=k;o.d=1}else if(o.d===1)o.d=-1;else{o.k='';o.d=1}
+    const tw=th.closest('.tw'),y=tw?tw.scrollTop:0;pintar();const t2=document.querySelectorAll('.tw.fijo')[th.dataset.o==='r'?0:1];if(t2)t2.scrollTop=0});
+  $('cam').onclick=()=>captura($('cam'));$('cam2').onclick=()=>captura($('cam2'));
   $('plt').onclick=()=>{plVer=!plVer;pintar()};
   $('pls').onchange=e=>{plSede=e.target.value;msgP='';pintar()};
   const gP=async l=>setDoc(doc(db,'config','placas_'+plSede),{placas:l});
@@ -149,7 +195,8 @@ function detalle(x){if(!x)return;const R=x.respuestas||{},d=$('det');
    ${Q.map(([c,q,cr],i)=>{const r=R['q'+String(i+1).padStart(2,'0')]||{};return `<div class="qi"><span class="n">${i+1}.</span><span><span class="cat">${cr?'⚠ ':''}${c}</span> ${esc(q)}</span><span class="pill ${r.r==='NO'?'p-no':'p-ok'}">${esc(r.r||'—')}</span>${r.r==='NO'?`<span class="o">Observación: ${esc(r.obs||'')}</span>`:''}</div>`}).join('')}
    ${x.obsGeneral?`<p style="margin-top:12px"><b>Observaciones:</b> ${esc(x.obsGeneral)}</p>`:''}</div>`;
   d.showModal();$('dc').onclick=()=>d.close()}
-async function libroXLSX(V){if(!window.XLSX){await new Promise((ok,er)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=ok;s.onerror=er;document.head.appendChild(s)})}
+async function cargarXLSX(){if(!window.XLSX){await new Promise((ok,er)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=ok;s.onerror=er;document.head.appendChild(s)})}}
+async function libroXLSX(V){await cargarXLSX();
   const PP={};pares(D).forEach(e=>PP[e.dia+'|'+e.sede+'|'+e.placa]=e);
   const enc=['Fecha','Sede','Operación','Placa','Conductor','Kilometraje','Total SI','Total NO','Críticos en NO','Salida y retorno (día)','Tiempo de diligenciamiento'];Q.forEach(([c,q],i)=>{enc.push(`${i+1}. ${c} - ${q}`);enc.push(`Obs. ${i+1}`)});enc.push('Observaciones generales');
   const rows=[enc,...V.map(x=>{const U=v=>String(v??'').replace(/\s+/g,' ').trim().toUpperCase(),R=x.respuestas||{},e=PP[String(x.fecha||'').slice(0,10)+'|'+x.sede+'|'+x.placa],f=[x.fecha,U(x.sede),U(x.operacion),U(x.placa),U(x.conductor),x.km||'',x.totalSi,x.totalNo,U((x.criticosNo||[]).join(' | ')),e?(e.pct===100?'100% completo':'50% · falta '+e.falta):'',x.duracionSeg!=null?`${Math.floor(x.duracionSeg/60)}:${String(x.duracionSeg%60).padStart(2,'0')}`:''];Q.forEach((q,i)=>{const r=R['q'+String(i+1).padStart(2,'0')]||{};f.push(U(r.r));f.push(U(r.obs))});f.push(U(x.obsGeneral));return f})];
@@ -158,10 +205,25 @@ async function libroXLSX(V){if(!window.XLSX){await new Promise((ok,er)=>{const s
   const ws=XLSX.utils.aoa_to_sheet([rows[0],...cuerpo]);ws['!cols']=rows[0].map((v,i)=>({wch:i<10?[19,14,10,10,28,12,9,9,40,22][i]:(i===rows[0].length-1?40:(i-10)%2?30:12)}));ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:cuerpo.length,c:rows[0].length-1}})};
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Checklist');return wb}
 const nombreX=()=>`checklist_preoperacional_${new Date().toISOString().slice(0,10)}.xlsx`;
+// 📷 Captura de toda la tabla de Reportes (todas las filas, aunque esté con scroll) y descarga como imagen
+async function captura(btn){if(btn.disabled)return;btn.disabled=true;btn.classList.add('girando');
+  try{if(!window.html2canvas)await new Promise((ok,er)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';s.onload=ok;s.onerror=er;document.head.appendChild(s)});
+    const card=btn.closest('.card');card.classList.add('cap');await new Promise(r=>requestAnimationFrame(()=>setTimeout(r,60)));
+    if(document.fonts&&document.fonts.ready)await document.fonts.ready;
+    // escala alta (nítida) sin pasar los límites de tamaño de imagen del navegador
+    const W=card.scrollWidth,H=card.scrollHeight,esc2=Math.max(1.5,Math.min(3,16000/Math.max(W,H),Math.sqrt(1.5e8/(W*H))));
+    const cv=await html2canvas(card,{backgroundColor:'#13201f',scale:esc2,useCORS:true,logging:false,width:W,height:H,windowWidth:Math.max(document.documentElement.clientWidth,card.scrollWidth+40),ignoreElements:el=>!!(el.classList&&el.classList.contains('camb'))});
+    card.classList.remove('cap');
+    const f=[F.sede,F.oper,F.dia||F.mes].filter(Boolean).join('_')||'todos',a=document.createElement('a');a.download=`${btn.dataset.n||'reportes'}_${f}_${new Date().toISOString().slice(0,10)}.png`;a.href=cv.toDataURL('image/png');document.body.appendChild(a);a.click();a.remove()}
+  catch(x){console.error(x);alert('No se pudo generar la imagen.');const c=document.querySelector('.cap');if(c)c.classList.remove('cap')}
+  btn.disabled=false;btn.classList.remove('girando')}
 async function excel(V){if(!V.length)return alert('No hay reportes para descargar con estos filtros.');
   const meses=[...new Set(V.map(x=>String(x.fecha||'').slice(0,7)).filter(Boolean))].sort();
   for(const mm of meses){const Vm=V.filter(x=>String(x.fecha||'').startsWith(mm)),wb=await libroXLSX(Vm),Pm=pares(D.filter(x=>String(x.fecha||'').startsWith(mm)&&(!F.sede||x.sede===F.sede)));
     const sr=[['DÍA','SEDE','PLACA','CONDUCTOR(ES)','SALIDA','RETORNO','CUMPLIMIENTO %','ESTADO'],...Pm.slice().sort((a,b)=>a.dia.localeCompare(b.dia)||a.placa.localeCompare(b.placa)).map(e=>[e.dia,e.sede.toUpperCase(),e.placa.toUpperCase(),[...e.cond].map(c=>String(c).toUpperCase()).join(' / '),e.sal?'SI':'NO',e.ret?'SI':'NO',e.pct,e.pct===100?'COMPLETO':'ALERTA: FALTA '+e.falta.toUpperCase()])];
+    // placas programadas (MOVILIZADORES) que no hicieron checklist en el día: 0 %
+    Object.values(PROG).filter(pg=>String(pg.dia).startsWith(mm)&&(!F.sede||pg.sede===F.sede)).forEach(pg=>(pg.placas||[]).forEach(pl=>{if(!Pm.some(e=>e.dia===pg.dia&&e.sede===pg.sede&&e.placa===pl))sr.push([pg.dia,pg.sede.toUpperCase(),pl,'','NO','NO',0,'ALERTA: PROGRAMADA SIN CHECKLIST'])}));
+    sr.splice(1,sr.length-1,...sr.slice(1).sort((a,b)=>String(a[0]).localeCompare(String(b[0]))||String(a[2]).localeCompare(String(b[2]))));
     const ws=XLSX.utils.aoa_to_sheet(sr);ws['!cols']=[{wch:12},{wch:14},{wch:10},{wch:28},{wch:8},{wch:8},{wch:14},{wch:24}];XLSX.utils.book_append_sheet(wb,ws,'Salida y retorno');
     const al=Pm.filter(e=>e.pct<100);XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['ALERTAS · PLACAS SIN SALIDA Y RETORNO EL MISMO DÍA'],['DÍA','SEDE','PLACA','FALTA'],...al.map(e=>[e.dia,e.sede.toUpperCase(),e.placa.toUpperCase(),e.falta.toUpperCase()])]),'Alertas');
     XLSX.writeFile(wb,`checklist_preoperacional_${mm}${F.sede?'_'+F.sede:''}.xlsx`);await new Promise(r=>setTimeout(r,500))}}
